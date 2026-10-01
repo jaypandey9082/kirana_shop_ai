@@ -16,7 +16,8 @@
     "check": "npm run lint && npm run typecheck && npm run test",
     "db:migrate": "node --env-file-if-exists=.env.local --import tsx scripts/db.ts migrate",
     "db:reset": "node --env-file-if-exists=.env.local --import tsx scripts/db.ts reset",
-    "test:db": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres:///kirana_test} vitest run tests/db --no-file-parallelism --testTimeout=180000 --hookTimeout=180000"
+    "test:db": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres:///kirana_test} vitest run tests/db --no-file-parallelism --testTimeout=180000 --hookTimeout=180000",
+    "smoke": "node --env-file-if-exists=.env.local --import tsx scripts/smoke.mts"
   },
   "dependencies": {
     "lucide-react": "^1.49.0",

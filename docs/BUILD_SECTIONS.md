@@ -198,3 +198,14 @@ merchant Orders shows the paid order; Khata overview and Ramesh's ledger.
 
 Not built: online (gateway) settlement of udhaar via a payment link; settlements are
 recorded by the merchant (cash/UPI collected outside the app).
+
+## Section 11 scope (in progress — blocked on accounts and keys)
+
+Done: installable web app (manifest + generated icons, theme colour), `GET /api/ready`
+pre-demo checklist, presenter page `/demo` (customer, shopkeeper and live log side by side,
+protected reset), golden-path smoke test `npm run smoke [-- url]`, `docs/DEPLOY.md`,
+`docs/DEMO_RUNBOOK.md`. The smoke test passes locally (mock gateway, no AI keys).
+
+Blocked (needs the team): Vercel deploy, Supabase project, Paytm staging credentials and
+webhook, OpenAI and Sarvam keys, n8n instance, phone tests on the venue network, three
+full rehearsals and the backup recording.

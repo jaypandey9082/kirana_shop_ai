@@ -4,11 +4,12 @@ import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "swap" });
 const devanagari = Noto_Sans_Devanagari({ subsets: ["devanagari"], variable: "--font-devanagari", display: "swap" });
-export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0B1F44" };
 
 export const metadata: Metadata = {
   title: "Kirana Shop AI | Team HackHorizon",
   description: "Counter, Shop, Khata and Salaahkaar for neighbourhood merchants.",
+  appleWebApp: { capable: true, title: "Kirana", statusBarStyle: "default" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
