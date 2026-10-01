@@ -6,6 +6,7 @@ import { Button, ErrorBanner, Sheet } from "@/components/ui/primitives";
 import { MoneyText, PaidToast, PaymentStatus, StockDelta, type PaymentState } from "./components";
 import { formatMoney } from "@/lib/format-money";
 import type { BillView } from "@/lib/bills";
+import { speakHindi } from "./voice";
 
 export type OnlineMode = "staging" | "mock" | "live-off";
 interface Delta { productId: string; name: string; before: number; after: number; reorderLevel: number }
@@ -25,26 +26,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 const timeNow = () => new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date());
 
-/**
- * Software voice confirmation (not Soundbox hardware): Sarvam Hindi TTS when set up,
- * otherwise this device's speech engine. Voice is optional and never blocks the flow.
- */
-async function announce(paise: number) {
-  const text = `${Math.round(paise / 100)} रुपये प्राप्त हुए`;
-  try {
-    const res = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
-    if (res.ok) {
-      const { base64, mime } = await res.json();
-      await new Audio(`data:${mime};base64,${base64}`).play();
-      return;
-    }
-  } catch { /* fall through to device voice */ }
-  try {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = "hi-IN";
-    window.speechSynthesis.speak(u);
-  } catch { /* voice is optional */ }
-}
+/** Software voice confirmation of a verified amount (not Soundbox hardware). */
+const announce = (paise: number) => speakHindi(`${Math.round(paise / 100)} रुपये प्राप्त हुए`);
 
 export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill: BillView; onlineMode: OnlineMode; onNewBill: () => void; onSettled?: (label: string) => void }) {
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
