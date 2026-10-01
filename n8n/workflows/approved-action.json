@@ -1,0 +1,39 @@
+{
+  "name": "Kirana Shop AI · approved action",
+  "nodes": [
+    {
+      "parameters": { "httpMethod": "POST", "path": "kirana-approved-action", "responseMode": "onReceived", "options": {} },
+      "name": "Approved action webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Verify the HMAC signature from Kirana Shop AI, then pass the action on.\n// Requires NODE_FUNCTION_ALLOW_BUILTIN=crypto and KIRANA_WEBHOOK_SECRET in n8n's environment.\nconst crypto = require('crypto');\nconst item = $input.first().json;\nconst raw = JSON.stringify(item.body);\nconst expected = crypto.createHmac('sha256', $env.KIRANA_WEBHOOK_SECRET || '').update(raw).digest('hex');\nif (item.headers['x-kirana-signature'] !== expected) throw new Error('Bad signature');\nreturn [{ json: item.body }];"
+      },
+      "name": "Verify signature",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callbackUrl }}",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "x-n8n-callback-secret", "value": "={{ $env.KIRANA_CALLBACK_SECRET }}" }] },
+        "options": {}
+      },
+      "name": "Tell Kirana it's done",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 0]
+    }
+  ],
+  "connections": {
+    "Approved action webhook": { "main": [[{ "node": "Verify signature", "type": "main", "index": 0 }]] },
+    "Verify signature": { "main": [[{ "node": "Tell Kirana it's done", "type": "main", "index": 0 }]] }
+  },
+  "settings": {}
+}

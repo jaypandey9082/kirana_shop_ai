@@ -11,7 +11,7 @@ export interface ResetSummary {
   khataOutstandingPaise: number;
 }
 
-const TABLES = "mock_gateway_orders, events, actions, khata_entries, stock_movements, payments, bill_items, bills, customers, products, merchants";
+const TABLES = "outbox, mock_gateway_orders, events, actions, khata_entries, stock_movements, payments, bill_items, bills, customers, products, merchants";
 
 async function insertChunked<T extends object>(tx: Tx, table: string, rows: T[], size = 1000) {
   for (let i = 0; i < rows.length; i += size) {

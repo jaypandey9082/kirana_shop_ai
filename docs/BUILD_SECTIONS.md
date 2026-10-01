@@ -138,3 +138,43 @@ independent SQL sum and the week-on-week comparison; staged milk (8/20) is low a
 forecast to run out before close (~7 pm on the seed); slow movers all have > 21 days of
 cover; overdue = Ramesh ₹980 (42 d), Sunita ₹720 (35 d), Anil ₹450 (31 d) = ₹2,150, total
 outstanding ₹11,640; a payment settles the oldest udhaar first.
+
+## Section 8 scope
+
+Completed: `lib/salaahkaar/tools.ts` (7 strict tools: get_sales_summary, get_low_stock,
+forecast_runout, get_slow_movers, get_overdue_dues, propose_reorder, propose_reminder —
+drafts only, de-duplicated), `lib/salaahkaar/agent.ts` (OpenAI function-calling loop with
+a JSON reply `{display, speak}`; labelled offline mode with Hinglish/Devanagari keyword
+intents when no key or the AI fails; a number guard on every mode: any number not in tool
+results or the question hides the model's wording and shows the tool cards), approval
+intent (`lib/salaahkaar/intent.ts`), proactive nudges, routes `POST /api/salaahkaar` and
+`GET /api/salaahkaar/nudges`, and the Salaahkaar screen (chat, source-backed cards,
+action cards, voice in, Hindi voice out, "haan, bhej do" approval). Each answer is logged
+with the tools used.
+
+Verified: DB tests (offline answers from tools; every number grounded across five
+question types; no duplicate drafts; reminder draft; help for unknown questions; AI mode
+with a scripted fake: tool result fed back, grounded answer kept, invented ₹99,999
+caught, model failure → offline), unit tests (guard, intent, tool contracts). Browser:
+offline mode badge, proactive milk card, answer + card + source + reorder draft.
+Not yet tested live: the OpenAI agent (no key).
+
+## Section 9 scope
+
+Completed: `lib/actions.ts` (PENDING → APPROVED → EXECUTED / REJECTED / FAILED with row
+locks; one outbox row per action enforced by a unique index), routes
+`/api/actions/:id` + `approve` / `reject` / `retry`, the authenticated n8n callback
+`/api/actions/:id/executed` (`x-n8n-callback-secret`), `GET /api/outbox`, migration
+`0004_outbox.sql`, a signed (HMAC-SHA256) n8n webhook when `N8N_WEBHOOK_URL` is set and a
+built-in outbox otherwise, `n8n/workflows/approved-action.json` + `n8n/README.md`, the
+Outbox tab in the Log, and action cards that show the real execution route.
+
+Verified: DB tests (nothing runs before approval; approve executes once despite double
+taps, repeat approvals and concurrent callbacks; rejected drafts can't run; n8n webhook
+signature + callback auth 401/200 + duplicate callback no-op; n8n down → FAILED → retry).
+Browser: "Haan, bhej do" approved the milk reorder, card shows Approved → Done · built-in
+outbox, Outbox lists the supplier message (not auto-sent).
+Not yet tested live: a real n8n instance (workflow JSON is untested).
+
+Note: the DB tests use long timeouts because this Mac's disk is ~98% full and swap is
+nearly exhausted, which stalls Postgres for up to ~100 s at random.
