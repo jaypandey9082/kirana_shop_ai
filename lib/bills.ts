@@ -130,25 +130,35 @@ export async function addLines(sql: Sql, billId: string, lines: NewLine[]): Prom
   return getBill(sql, billId);
 }
 
-/** Free text ("2 doodh, 3 biskut") → matched lines. Unmatched text is returned, not guessed. */
-export async function addFromText(sql: Sql, billId: string, text: string, source: LineSource): Promise<{ bill: BillView; unmatched: string[] }> {
+/** Items read by AI (parchi/voice) or parsed from typed text → matched catalogue lines. */
+export async function addExtracted(
+  sql: Sql, billId: string, items: Array<{ raw: string; name: string; qty: number; legible?: boolean }>, source: LineSource,
+): Promise<{ bill: BillView; unmatched: string[] }> {
   const [b] = await sql<{ merchant_id: string }[]>`select merchant_id from bills where id = ${billId}`;
   if (!b) throw new DomainError("NOT_FOUND", "Bill not found.");
   const catalogue = await listCatalogue(sql, b.merchant_id);
-  const parsed = parseItemList(text);
-  if (!parsed.length) throw new DomainError("INVALID", "No items found in the text.");
   const lines: NewLine[] = [];
   const unmatched: string[] = [];
-  for (const item of parsed) {
-    const m = matchProduct(item.text, catalogue);
-    if (!m.product) { unmatched.push(item.text); continue; }
+  for (const item of items) {
+    const m = matchProduct(item.name, catalogue);
+    if (!m.product) { unmatched.push(item.raw || item.name); continue; }
+    // An unclear handwriting/voice read always needs the shopkeeper, even if the word matched.
+    const review = m.needsReview || item.legible === false;
+    const candidates = m.candidates.length ? m.candidates : [m.product];
     lines.push({
-      productId: m.product.id, qty: item.qty, source, confidence: m.confidence, rawText: item.text,
-      needsReview: m.needsReview, candidateIds: m.needsReview ? m.candidates.map((c) => c.id) : [],
+      productId: m.product.id, qty: Math.min(Math.max(item.qty, 1), 99), source, confidence: m.confidence,
+      rawText: item.raw || item.name, needsReview: review, candidateIds: review ? candidates.map((c) => c.id) : [],
     });
   }
   const bill = lines.length ? await addLines(sql, billId, lines) : await getBill(sql, billId);
   return { bill, unmatched };
+}
+
+/** Typed text ("2 doodh, 3 biskut") → deterministic parse → matched lines. Unmatched text is returned, not guessed. */
+export async function addFromText(sql: Sql, billId: string, text: string, source: LineSource): Promise<{ bill: BillView; unmatched: string[] }> {
+  const parsed = parseItemList(text);
+  if (!parsed.length) throw new DomainError("INVALID", "No items found in the text.");
+  return addExtracted(sql, billId, parsed.map((p) => ({ raw: p.text, name: p.text, qty: p.qty })), source);
 }
 
 export async function updateLine(sql: Sql, billId: string, lineId: string, change: { qty?: number; productId?: string }): Promise<BillView> {

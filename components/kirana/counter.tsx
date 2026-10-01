@@ -7,6 +7,7 @@ import { BillLine, BillSummary, InputModeTabs, MoneyText, type InputMode } from 
 import { matchProduct, normalize } from "@/lib/matcher";
 import type { BillView, CatalogueProduct } from "@/lib/bills";
 import { PaymentPanel, type OnlineMode } from "./payment";
+import { ParchiPanel, VoicePanel, type AiCapabilities, type LinesResult } from "./inputs";
 
 const STORAGE_KEY = "kirana.counter.billId";
 /** Everyday items shown as one-tap chips before the merchant searches. */
@@ -25,11 +26,12 @@ function stockLabel(p: CatalogueProduct) {
   return { text: `${p.stock} in stock`, tone: "tone-neutral" };
 }
 
-export function CounterScreen({ catalogue, onlineMode }: { catalogue: CatalogueProduct[]; onlineMode: OnlineMode }) {
-  const [mode, setMode] = useState<InputMode>("Manual");
+export function CounterScreen({ catalogue, onlineMode, ai }: { catalogue: CatalogueProduct[]; onlineMode: OnlineMode; ai: AiCapabilities }) {
+  const [mode, setMode] = useState<InputMode>("Parchi");
   const [query, setQuery] = useState("");
   const [bill, setBill] = useState<BillView | null>(null);
   const [unmatched, setUnmatched] = useState<string[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -52,6 +54,7 @@ export function CounterScreen({ catalogue, onlineMode }: { catalogue: CatalogueP
     if (bill && bill.status === "DRAFT") return bill;
     const { bill: created } = await api<{ bill: BillView }>("/api/bills", { method: "POST" });
     sessionStorage.setItem(STORAGE_KEY, created.id);
+    setBill(created);
     return created;
   };
 
@@ -85,7 +88,9 @@ export function CounterScreen({ catalogue, onlineMode }: { catalogue: CatalogueP
     setBill(next);
   });
 
-  const newBill = () => { sessionStorage.removeItem(STORAGE_KEY); setBill(null); setUnmatched([]); setError(null); window.scrollTo({ top: 0 }); router.refresh(); /* fresh stock counts */ };
+  const onInputResult = (r: LinesResult, n: string) => { setBill(r.bill); setUnmatched(r.unmatched); setNote(n); };
+
+  const newBill = () => { sessionStorage.removeItem(STORAGE_KEY); setBill(null); setUnmatched([]); setNote(null); setError(null); window.scrollTo({ top: 0 }); router.refresh(); /* fresh stock counts */ };
 
   // Search results: best matches for a single item, or nothing while a list is being typed.
   const isList = /[,\n]|\b\d+\s+\S/.test(query.trim()) && query.trim().split(/\s+/).length > 1;
@@ -166,16 +171,21 @@ export function CounterScreen({ catalogue, onlineMode }: { catalogue: CatalogueP
             )}
             {mode === "Manual" && !query && !bill?.lines.length && <p className="caption mt-2 text-muted">Roz ke items · tap to add</p>}
           </form>
+        ) : mode === "Parchi" ? (
+          <ParchiPanel caps={ai} ensureBill={ensureBill} onResult={onInputResult} />
+        ) : mode === "Voice" ? (
+          <VoicePanel caps={ai} ensureBill={ensureBill} onResult={onInputResult} />
         ) : (
           <div className="card text-center">
-            <h2>{mode} billing abhi nahi</h2>
-            <p className="secondary mt-2">{mode} input is built in a later section. Type the list in Manual for now, e.g. “2 doodh, 1 bread”.</p>
-            <Button variant="secondary" className="mt-4 w-full" onClick={() => setMode("Manual")}>Type the list</Button>
+            <h2>Product photo abhi nahi</h2>
+            <p className="secondary mt-2">Recognising products from a photo is a stretch goal. Use Parchi, Voice or Manual.</p>
+            <Button variant="secondary" className="mt-4 w-full" onClick={() => setMode("Parchi")}>Parchi se bill</Button>
           </div>
         )}
       </div>
 
       {error && <div className="mt-4"><ErrorBanner message={error} /></div>}
+      {note && bill?.lines.length ? <p className="caption mt-4 text-muted" role="status">{note}</p> : null}
       {unmatched.length > 0 && (
         <p className="mt-4 rounded-lg bg-warning-tint p-3 text-sm text-warning" role="status">
           Catalogue mein nahi mila: {unmatched.join(", ")}. Search karke add karein.

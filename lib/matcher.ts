@@ -89,21 +89,25 @@ const NUMBER_WORDS: Record<string, number> = {
   ek: 1, one: 1, do: 2, two: 2, teen: 3, three: 3, char: 4, chaar: 4, four: 4,
   paanch: 5, panch: 5, five: 5, chhe: 6, cheh: 6, six: 6, saat: 7, seven: 7,
   aath: 8, eight: 8, nau: 9, nine: 9, das: 10, ten: 10,
+  "एक": 1, "दो": 2, "तीन": 3, "चार": 4, "पांच": 5, "पाँच": 5, "छह": 6, "छः": 6, "सात": 7, "आठ": 8, "नौ": 9, "दस": 10,
 };
-const FILLER = new Set(["packet", "packets", "pkt", "pc", "pcs", "piece", "pieces", "nos", "x"]);
+const FILLER = new Set(["packet", "packets", "pkt", "pc", "pcs", "piece", "pieces", "nos", "x", "पैकेट"]);
 
 export interface ParsedLine { text: string; qty: number }
 
 /** "2 doodh, 1 bread aur teen biskut" -> [{doodh,2},{bread,1},{biskut,3}] */
 export function parseItemList(input: string): ParsedLine[] {
   return input
-    .split(/[,;\n]+|\s+(?:aur|and|&)\s+/i)
+    .split(/[,;\n]+|\s+(?:aur|and|&|और)\s+/i)
     .map((seg) => normalize(seg))
     .filter(Boolean)
     .map((seg) => {
       let words = seg.split(" ");
       let qty = 1;
-      const asQty = (w: string) => (/^\d{1,3}$/.test(w) ? Number(w) : NUMBER_WORDS[w]);
+      const asQty = (w: string) => {
+        const digits = w.replace(/[०-९]/g, (d) => String("०१२३४५६७८९".indexOf(d)));
+        return /^\d{1,3}$/.test(digits) ? Number(digits) : NUMBER_WORDS[w];
+      };
       if (words.length > 1 && asQty(words[0])) { qty = asQty(words[0])!; words = words.slice(1); }
       else if (words.length > 1 && asQty(words[words.length - 1])) { qty = asQty(words[words.length - 1])!; words = words.slice(0, -1); }
       words = words.filter((w) => !FILLER.has(w));

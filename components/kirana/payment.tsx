@@ -25,10 +25,22 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 const timeNow = () => new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date());
 
-/** Software voice confirmation on this device (not Soundbox hardware). Sarvam TTS replaces it in Section 6. */
-function announce(paise: number) {
+/**
+ * Software voice confirmation (not Soundbox hardware): Sarvam Hindi TTS when set up,
+ * otherwise this device's speech engine. Voice is optional and never blocks the flow.
+ */
+async function announce(paise: number) {
+  const text = `${Math.round(paise / 100)} रुपये प्राप्त हुए`;
   try {
-    const u = new SpeechSynthesisUtterance(`${Math.round(paise / 100)} रुपये प्राप्त हुए`);
+    const res = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    if (res.ok) {
+      const { base64, mime } = await res.json();
+      await new Audio(`data:${mime};base64,${base64}`).play();
+      return;
+    }
+  } catch { /* fall through to device voice */ }
+  try {
+    const u = new SpeechSynthesisUtterance(text);
     u.lang = "hi-IN";
     window.speechSynthesis.speak(u);
   } catch { /* voice is optional */ }
@@ -63,7 +75,7 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
         if (stop) return;
         setStatus(s);
         if (s.status === "SUCCESS") {
-          announce(bill.totalPaise);
+          void announce(bill.totalPaise);
           setDone({ kind: "online", label: payment.label, provider: payment.provider, stock: s.stock, at: timeNow() });
           return;
         }
@@ -108,7 +120,7 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
         <Button className="mt-4 w-full" disabled={pending} onClick={() => run(async () => {
           const r = await api<{ stock: Delta[] }>(`/api/bills/${bill.id}/pay`, { method: "POST", body: JSON.stringify({ method: "cash" }) });
           setSheet(null);
-          announce(bill.totalPaise);
+          void announce(bill.totalPaise);
           setDone({ kind: "cash", stock: r.stock, at: timeNow() });
         })}>Haan, cash mil gaya</Button>
       </Sheet>

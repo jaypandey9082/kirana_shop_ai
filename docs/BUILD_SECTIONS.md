@@ -102,3 +102,25 @@ replayed customer payment returned 409.
 
 Mocked / not tested: Paytm staging has NOT been run (no MID/merchant key yet). The
 voice confirmation uses the device's speech engine until Sarvam TTS (Section 6).
+
+## Section 6 scope
+
+Completed: `lib/ai/extract.ts` (OpenAI Responses API, image or text input, strict JSON
+schema, output validated with zod; the model only reads the list, it never prices or
+picks products), `lib/ai/sarvam.ts` (STT `saaras:v4`, TTS `bulbul:v3`), routes
+`POST /api/bills/:id/parchi` (photo, or `{demo:true}` for the cached demo reading),
+`POST /api/voice/stt`, `POST /api/tts`, voice orders via `/api/bills/:id/lines` with
+`source: "voice"` (AI reader when configured, otherwise the deterministic parser),
+the demo parchi page `/demo-parchi`, and the Counter's Parchi and Voice tabs (photo
+upload with on-device resize, recording up to 20 s, editable transcript, typed fallback).
+The paid-amount voice now uses Sarvam TTS with the device voice as fallback.
+Parser fallback now reads Hindi number words, Devanagari digits and "और".
+
+Verified: unit tests with fake OpenAI/Sarvam clients (request shape, strict schema,
+headers, error handling); DB tests: cached demo parchi → 4 lines, "biskut 3" flagged,
+confirm blocked until resolved, total ₹202 from catalogue prices; `legible: false`
+forces a check; unknown items are returned, not guessed. Browser: Parchi tab shows the
+no-key state honestly, cached demo adds the labelled lines; Voice tab shows typing works.
+
+Not yet tested live: no OpenAI or Sarvam key is configured, so real photo reading,
+speech-to-text and Sarvam TTS have only been tested with fakes.

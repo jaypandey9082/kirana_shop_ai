@@ -26,11 +26,11 @@ Nothing marks a bill paid except (a) a Paytm webhook that passes signature check
 
 1. **Choose input.** Scan / Photo / Voice / Parchi.
 2. **Turn input into items.**
-   - *Parchi*: photo → Sarvam Document AI (OCR) → raw text.
+   - *Parchi*: photo → OpenAI vision (Responses API, strict JSON schema) → items as written. (Sarvam Document Intelligence is an async job API with undocumented handwriting support, so it is not on the live path.) A cached reading of the demo parchi is the labelled fallback.
    - *Voice*: audio → Sarvam STT (Hindi, code-mixed) → text.
    - *Barcode*: camera → barcode → direct product lookup (no AI).
    - *Photo*: stretch goal; treat like parchi with a vision model.
-3. **Extract.** LLM returns strict JSON: `[{raw, name, qty, unit}]`. No prices from the LLM.
+3. **Extract.** LLM returns strict JSON: `[{raw, name, qty, legible}]`. No prices and no product mapping from the LLM; `legible: false` forces a shopkeeper check.
 4. **Match to catalogue.** Fuzzy match + Hinglish aliases (`doodh → Toned milk 500ml`, `biskut → Glucose biscuit 250g`). Each line gets a confidence score.
    - ≥ 0.8: accepted, price from catalogue.
    - < 0.8: **flagged**, shows top-2 candidates for the shopkeeper to pick.
