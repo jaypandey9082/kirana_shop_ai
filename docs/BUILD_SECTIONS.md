@@ -124,3 +124,17 @@ no-key state honestly, cached demo adds the labelled lines; Voice tab shows typi
 
 Not yet tested live: no OpenAI or Sarvam key is configured, so real photo reading,
 speech-to-text and Sarvam TTS have only been tested with fakes.
+
+## Section 7 scope
+
+Completed: `lib/insights.ts` — `salesSummary` (today / yesterday / last 7 days, compared
+with the same window a week earlier, top items), `lowStock`, `forecastRunout` (7-day
+hour-of-day sales profile walked forward to the next morning restock), `slowMovers`
+(14-day stock cover > 21 days), `khataDues` / `overdueDues` (FIFO ageing in IST calendar
+days). Every result carries a `source`. Route: `GET /api/insights`.
+
+Verified (`tests/db/insights.test.ts`, fixed 3 Oct 15:00 IST): sales equal an
+independent SQL sum and the week-on-week comparison; staged milk (8/20) is low and is
+forecast to run out before close (~7 pm on the seed); slow movers all have > 21 days of
+cover; overdue = Ramesh ₹980 (42 d), Sunita ₹720 (35 d), Anil ₹450 (31 d) = ₹2,150, total
+outstanding ₹11,640; a payment settles the oldest udhaar first.
