@@ -6,7 +6,7 @@ import { MoneyText } from "./components";
 import { paiseToRupees } from "@/lib/payments/types";
 
 interface Checkout {
-  orderId: string; provider: "paytm" | "mock"; status: string; amountPaise: number; billNumber: number; shop: string;
+  orderId: string; provider: "paytm" | "mock"; status: string; amountPaise: number; billNumber: number; shop: string; trackPath: string | null;
   items: Array<{ name: string; qty: number; totalPaise: number }>;
   paytm: { mid: string; txnToken: string; scriptUrl: string } | null;
 }
@@ -113,6 +113,7 @@ export function CustomerPay({ checkout, mockEnabled }: { checkout: Checkout; moc
             <CheckCircle2 className="mx-auto !h-10 !w-10 text-success" aria-hidden="true" />
             <h2 className="mt-3 text-lg">Payment received</h2>
             <p className="secondary mt-1">Confirmed by the shop&apos;s server{mock ? " (mock)" : ""}. Dhanyavaad!</p>
+            {checkout.trackPath && <a className="btn btn-primary mt-4 w-full" href={checkout.trackPath}>Order track karein</a>}
           </div>
         )}
         {view === "verifying" && (

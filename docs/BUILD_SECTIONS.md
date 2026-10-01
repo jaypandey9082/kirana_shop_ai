@@ -178,3 +178,23 @@ Not yet tested live: a real n8n instance (workflow JSON is untested).
 
 Note: the DB tests use long timeouts because this Mac's disk is ~98% full and swap is
 nearly exhausted, which stalls Postgres for up to ~100 s at random.
+
+## Section 10 scope
+
+Completed: QR storefront `/s/[shop]` (categories, search, stock-aware Add/stepper, cart,
+pickup/delivery checkout → `POST /api/shop/:slug/orders` → payment page), customer
+tracking `/s/[shop]/order/[id]`, merchant Orders screen (live list every 3 s, new-order
+highlight, Received → Preparing → Ready → Completed, Shop QR sheet), and the Khata screen
+(total, ageing buckets, collect-first list, customer ledger sheet, "Cash mila" settlement,
+reminder draft with approval). Libraries: `lib/orders.ts`, `lib/khata.ts`. Migration
+`0005_storefront.sql` adds order name/phone/mode/note. Online orders enter the queue only
+after verified payment (`bill.paid` sets fulfilment RECEIVED).
+
+Verified: DB tests (catalogue prices; queue only after verified payment; stock −2; steps
+can't be skipped; over-stock, unknown product and address-less delivery refused; Khata
+₹11,640 / ₹2,150; part payment settles oldest first; overpay refused; settlement logged as
+merchant-recorded). Browser: storefront → order → mock pay → "Order track karein";
+merchant Orders shows the paid order; Khata overview and Ramesh's ledger.
+
+Not built: online (gateway) settlement of udhaar via a payment link; settlements are
+recorded by the merchant (cash/UPI collected outside the app).

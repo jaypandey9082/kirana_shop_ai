@@ -30,6 +30,9 @@ export const KHATA_CUSTOMERS: ReadonlyArray<{ name: string; open: ReadonlyArray<
   { name: "Deepa M.", open: [{ daysAgo: 1, rupees: 720 }] },
 ];
 
+// First names for synthetic online orders.
+const ONLINE_NAMES = ["Asha", "Rohit", "Meena", "Arjun", "Zainab", "Kiran", "Pooja", "Sameer", "Nisha", "Vivek"];
+
 // Relative footfall by hour (shop open 07:00-22:00).
 const HOURS: ReadonlyArray<[number, number]> = [
   [7, 4], [8, 7], [9, 7], [10, 5], [11, 4], [12, 4], [13, 3], [14, 3],
@@ -39,7 +42,7 @@ const HOURS: ReadonlyArray<[number, number]> = [
 export interface MerchantRow { id: string; slug: string; name: string; locality: string; open_till: string; delivery_radius_km: number; restock_hour: number; created_at: Date }
 export interface ProductRow { id: string; merchant_id: string; sku: string; name: string; category: string; unit: string; aliases: string[]; price_paise: number; stock: number; reorder_level: number; barcode: string; active: boolean }
 export interface CustomerRow { id: string; merchant_id: string; name: string; phone: string | null; created_at: Date }
-export interface BillRow { id: string; merchant_id: string; number: number; channel: "counter" | "online"; status: "PAID" | "ON_CREDIT"; payment_method: "paytm" | "cash" | "udhaar"; fulfilment: "COMPLETED" | null; customer_id: string | null; total_paise: number; created_at: Date; confirmed_at: Date; settled_at: Date }
+export interface BillRow { id: string; merchant_id: string; number: number; channel: "counter" | "online"; status: "PAID" | "ON_CREDIT"; payment_method: "paytm" | "cash" | "udhaar"; fulfilment: "COMPLETED" | null; customer_id: string | null; total_paise: number; created_at: Date; confirmed_at: Date; settled_at: Date; order_name: string | null; order_mode: "pickup" | "delivery" | null }
 export interface BillItemRow { id: string; bill_id: string; product_id: string; qty: number; unit_price_paise: number; source: "manual" | "storefront"; confidence: null; raw_text: null }
 export interface StockMovementRow { product_id: string; delta: number; reason: "opening" | "restock" | "sale" | "adjustment"; bill_id: string | null; created_at: Date }
 export interface KhataEntryRow { customer_id: string; type: "debit" | "credit"; amount_paise: number; bill_id: string | null; payment_id: null; note: string | null; created_at: Date }
@@ -172,6 +175,8 @@ export function generateDemoData(anchor: Date, seed = DEMO_SEED): DemoDataset {
       fulfilment: draft.channel === "online" ? "COMPLETED" : null,
       customer_id: draft.customer === null ? null : customers[draft.customer].id,
       total_paise: total, created_at: draft.at, confirmed_at: draft.at, settled_at: draft.at,
+      order_name: draft.channel === "online" ? ONLINE_NAMES[n % ONLINE_NAMES.length] : null,
+      order_mode: draft.channel === "online" ? (n % 3 === 0 ? "delivery" : "pickup") : null,
     });
     for (const l of draft.lines) {
       billItems.push({ id: id(), bill_id: billId, product_id: productIds[l.product], qty: l.qty, unit_price_paise: CATALOGUE[l.product].priceRupees * 100, source: draft.channel === "online" ? "storefront" : "manual", confidence: null, raw_text: null });

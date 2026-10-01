@@ -76,7 +76,9 @@ async function takeStock(tx: Tx, bill: { id: string; merchant_id: string; number
 /** The one place a bill becomes PAID. Caller must hold the bill lock inside `tx`. */
 async function markPaid(tx: Tx, bill: { id: string; merchant_id: string; number: number; total_paise: number }, method: "paytm" | "mock" | "cash", detail: string, verified: boolean, orderId: string) {
   const stock = await takeStock(tx, bill);
-  await tx`update bills set status = 'PAID', payment_method = ${method}, settled_at = now() where id = ${bill.id}`;
+  // Online orders enter the merchant's queue only once paid.
+  await tx`update bills set status = 'PAID', payment_method = ${method}, settled_at = now(),
+           fulfilment = case when channel = 'online' then 'RECEIVED'::fulfilment else fulfilment end where id = ${bill.id}`;
   await tx`insert into events (merchant_id, type, summary, data, verified) values (${bill.merchant_id}, 'bill.paid',
     ${`Bill #${bill.number} paid · ${formatMoney(bill.total_paise)} · ${detail}`},
     ${tx.json({ billId: bill.id, orderId, method, amountPaise: bill.total_paise, stock: stock as never })}, ${verified})`;
@@ -129,7 +131,7 @@ export async function startOnlinePayment(sql: Sql, billId: string, appUrl: strin
 /** What the customer's phone needs to pay an order (no secrets: the txn token is single-use and short-lived). */
 export async function getCustomerCheckout(sql: Tx, orderId: string) {
   const [r] = await sql`
-    select p.provider, p.status, p.amount_paise, p.raw, b.number, b.id bill_id, m.name shop
+    select p.provider, p.status, p.amount_paise, p.raw, b.number, b.id bill_id, b.channel, m.name shop, m.slug
     from payments p join bills b on b.id = p.bill_id join merchants m on m.id = b.merchant_id
     where p.provider_order_id = ${orderId} and p.provider in ('paytm', 'mock')`;
   if (!r) return null;
@@ -138,6 +140,7 @@ export async function getCustomerCheckout(sql: Tx, orderId: string) {
   return {
     orderId, provider: r.provider as "paytm" | "mock", status: r.status as string, amountPaise: r.amount_paise as number,
     billNumber: r.number as number, shop: r.shop as string,
+    trackPath: r.channel === "online" ? `/s/${r.slug}/order/${r.bill_id}` : null,
     items: items.map((i) => ({ name: i.name, qty: i.qty, totalPaise: i.line_total_paise })),
     paytm: (r.raw as { checkout?: CheckoutInfo } | null)?.checkout?.paytm ?? null,
   };

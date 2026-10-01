@@ -1,2 +1,2 @@
-import { KhataScreen } from "@/components/kirana/screens";
+import { KhataScreen } from "@/components/kirana/khata";
 export default function Page() { return <KhataScreen />; }
