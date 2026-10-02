@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Camera, ExternalLink, FileText, LoaderCircle, Plus } from "lucide-react";
+import { Camera, ExternalLink, FileText, LoaderCircle, Mic, Plus } from "lucide-react";
 import { Button, ErrorBanner } from "@/components/ui/primitives";
-import { VoiceComposer } from "./components";
 import type { BillView } from "@/lib/bills";
 import { useVoiceInput } from "./voice";
 
@@ -30,7 +29,7 @@ async function shrink(file: File): Promise<Blob> {
   }
 }
 
-export function ParchiPanel({ caps, ensureBill, onResult }: { caps: AiCapabilities; ensureBill: () => Promise<BillView>; onResult: (r: LinesResult, note: string) => void }) {
+export function ParchiPanel({ caps, ensureBill, onResult, compact = false }: { caps: AiCapabilities; ensureBill: () => Promise<BillView>; onResult: (r: LinesResult, note: string) => void; compact?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<null | "live" | "demo">(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +51,7 @@ export function ParchiPanel({ caps, ensureBill, onResult }: { caps: AiCapabiliti
         res = await fetch(`/api/bills/${bill.id}/parchi`, { method: "POST", body: form });
       }
       const data = await readJson(res);
-      onResult(data, kind === "demo" ? "Cached demo reading · not read live" : `Read by ${caps.parchiLabel ?? "AI"} · check every line`);
+      onResult(data, kind === "demo" ? "Cached demo reading" : `Read by ${caps.parchiLabel ?? "AI"} · check karein`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Parchi padh nahi paaye.");
     } finally {
@@ -60,38 +59,64 @@ export function ParchiPanel({ caps, ensureBill, onResult }: { caps: AiCapabiliti
     }
   };
 
+  const fileInput = (
+    <input
+      ref={input} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" aria-label="Parchi photo"
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        e.target.value = "";
+        if (!f) return;
+        setPreview(URL.createObjectURL(f));
+        void send("live", f);
+      }}
+    />
+  );
+  const demoButton = (primary: boolean, label = "Demo parchi (cached)") => (
+    <Button variant={primary ? "primary" : "quiet"} className="flex-1" disabled={!!busy} onClick={() => send("demo")}>
+      {busy === "demo" ? <LoaderCircle className="spin" aria-hidden="true" /> : <FileText aria-hidden="true" />}{label}
+    </Button>
+  );
+
+  if (compact) {
+    return (
+      <div className="card p-3">
+        {fileInput}
+        <div className="flex gap-2">
+          {caps.parchi && (
+            <Button variant="secondary" className="flex-1" disabled={!!busy} onClick={() => input.current?.click()}>
+              {busy === "live" ? <LoaderCircle className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}Aur parchi
+            </Button>
+          )}
+          {demoButton(false, caps.parchi ? "Demo" : "Demo parchi phir se")}
+        </div>
+        {error && <div className="mt-3"><ErrorBanner message={error} /></div>}
+      </div>
+    );
+  }
+
   return (
-    <div className="card">
-      <p className="section-label">Parchi se bill</p>
-      <div className="mt-3 flex items-center gap-3">
-        <span className="grid h-16 w-14 shrink-0 place-items-center overflow-hidden rounded-sm border border-[#EADFB8] bg-[#FFFDF4] text-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
-          {preview ? <img src={preview} alt="Parchi photo" className="h-full w-full object-cover" /> : <FileText aria-hidden="true" />}
+    <div className="card p-3">
+      {fileInput}
+      <button type="button" disabled={!caps.parchi || !!busy} onClick={() => input.current?.click()}
+        className="group flex w-full flex-col items-center gap-3 rounded-xl border-[1.5px] border-dashed border-line-strong bg-blue-50 px-4 py-7 text-center transition-colors hover:border-blue-600 disabled:cursor-not-allowed disabled:bg-canvas">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element -- local object URL preview
+          <img src={preview} alt="Parchi photo" className="h-20 w-16 rounded-lg object-cover shadow-card" />
+        ) : (
+          <span className={`grid h-14 w-14 place-items-center rounded-2xl ${caps.parchi ? "bg-blue-600 text-surface" : "bg-line text-muted"}`}>
+            {busy === "live" ? <LoaderCircle className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
+          </span>
+        )}
+        <span>
+          <span className={`block text-[17px] font-semibold ${caps.parchi ? "text-navy-950" : "text-muted"}`}>{busy === "live" ? "Parchi padh rahe hain…" : "Parchi ki photo lein"}</span>
+          <span className="secondary mt-1 block">{caps.parchi ? "AI padhega · catalogue se match · unsure items aap chunenge" : "Live reading is off on this server (no OpenAI key)."}</span>
         </span>
-        <p className="secondary">Photo lijiye. AI list padhega, catalogue se match hoga, aur jo pakka nahi woh aap chunenge.</p>
-      </div>
-      <input
-        ref={input} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" aria-label="Parchi photo"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          e.target.value = "";
-          if (!f) return;
-          setPreview(URL.createObjectURL(f));
-          void send("live", f);
-        }}
-      />
-      <Button className="mt-4 w-full" disabled={!caps.parchi || !!busy} onClick={() => input.current?.click()}>
-        {busy === "live" ? <LoaderCircle className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}
-        {busy === "live" ? "Parchi padh rahe hain…" : "Parchi ki photo lein"}
-      </Button>
-      {!caps.parchi && <p className="caption mt-2 text-muted">Live reading is not set up on this server (OpenAI key/model missing).</p>}
+      </button>
       <div className="mt-3 flex gap-2">
-        <Button variant="secondary" className="flex-1" disabled={!!busy} onClick={() => send("demo")}>
-          {busy === "demo" ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}Demo parchi (cached)
-        </Button>
-        <a className="btn btn-quiet" href="/demo-parchi" target="_blank" rel="noreferrer" aria-label="Open the demo parchi"><ExternalLink aria-hidden="true" /></a>
+        {demoButton(!caps.parchi)}
+        <a className="btn btn-quiet w-12 px-0" href="/demo-parchi" target="_blank" rel="noreferrer" aria-label="Open the demo parchi"><ExternalLink aria-hidden="true" /></a>
       </div>
-      <p className="caption mt-2 text-muted">Cached = a saved reading of the demo parchi, labelled in the log. Use it if the network or AI is down.</p>
+      <p className="caption mt-2 px-1 text-muted">Cached = demo parchi ki saved reading, log mein labelled.</p>
       {error && <div className="mt-3"><ErrorBanner message={error} /></div>}
     </div>
   );
@@ -102,40 +127,42 @@ export function VoicePanel({ caps, ensureBill, onResult }: { caps: AiCapabilitie
   const [addError, setAddError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const voice = useVoiceInput(setText);
-  const state = voice.state;
   const error = addError ?? voice.error;
-  const setError = setAddError;
-  const toggle = voice.toggle;
 
   const add = async () => {
     if (!text.trim()) return;
     setAdding(true);
-    setError(null);
+    setAddError(null);
     try {
       const bill = await ensureBill();
       const data = await readJson(await fetch(`/api/bills/${bill.id}/lines`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text, source: "voice" }) }));
-      onResult(data, "From voice · check every line");
+      onResult(data, "From voice · check karein");
       setText("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Add nahi hua.");
+      setAddError(e instanceof Error ? e.message : "Add nahi hua.");
     } finally {
       setAdding(false);
     }
   };
 
   return (
-    <div className="card">
-      <p className="section-label">Bolkar bill</p>
-      <p className="secondary mt-2">“Do doodh, ek bread aur teen biskut” bolein. Transcript check karke bill mein jodein.</p>
-      <div className="mt-4">
-        <VoiceComposer state={state} value={text} onChange={setText} onVoice={caps.voice ? toggle : undefined}
-          label="Spoken or typed order" placeholder="do doodh, ek bread…" idleHint="Mic dabaiye ya type karein" />
+    <form className="card" onSubmit={(e) => { e.preventDefault(); void add(); }}>
+      <div className="flex flex-col items-center gap-3 pb-4 pt-2 text-center">
+        <button type="button" aria-label={voice.state === "listening" ? "Stop listening" : "Start voice input"} disabled={!caps.voice || adding}
+          onClick={voice.toggle} className={`voice-button voice-lg ${voice.state === "listening" ? "listening" : ""}`}>
+          {voice.state === "processing" ? <LoaderCircle className="spin" aria-hidden="true" /> : voice.state === "listening" ? <span className="wave" aria-hidden="true"><span /><span /><span /><span /></span> : <Mic className="!h-7 !w-7" aria-hidden="true" />}
+        </button>
+        <div>
+          <p className="font-semibold text-navy-950">{voice.state === "listening" ? "Sun rahe hain…" : voice.state === "processing" ? "Samajh rahe hain…" : "Bolkar bill banaiye"}</p>
+          <p className="secondary mt-1">“Do doodh, ek bread aur teen biskut”</p>
+        </div>
       </div>
-      {!caps.voice && <p className="caption mt-2 text-muted">Voice is not set up on this server (Sarvam key missing). Typing works.</p>}
-      <Button className="mt-3 w-full" disabled={!text.trim() || adding || state === "processing"} onClick={add}>
+      <label htmlFor="voice-order" className="sr-only">Spoken or typed order</label>
+      <input id="voice-order" className="field" placeholder={caps.voice ? "Transcript yahan aayega… ya type karein" : "Voice off (no Sarvam key) · type karein"} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" />
+      <Button type="submit" className="mt-3 w-full" disabled={!text.trim() || adding || voice.state === "processing"}>
         {adding ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}Bill mein jodein
       </Button>
       {error && <div className="mt-3"><ErrorBanner message={error} /></div>}
-    </div>
+    </form>
   );
 }

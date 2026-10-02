@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Send, Volume2 } from "lucide-react";
-import { Button, ErrorBanner } from "@/components/ui/primitives";
+import { LoaderCircle, Mic, Volume2 } from "lucide-react";
+import { ErrorBanner } from "@/components/ui/primitives";
 import { ActionCard, ChatBubble, InsightCard, VoiceComposer, type ActionState } from "./components";
 import { speakHindi, useVoiceInput } from "./voice";
 import { suggestions } from "@/lib/ui-fixtures";
@@ -12,9 +12,9 @@ interface Reply { mode: "ai" | "offline" | "ai-guarded"; display: string; speak:
 interface Turn { id: number; question: string; reply: Reply | null; error?: string; viaVoice: boolean }
 
 const MODE_LABEL: Record<Reply["mode"], string> = {
-  ai: "AI · answers from your shop data",
-  offline: "Offline mode · rule-based, same shop data",
-  "ai-guarded": "AI wording hidden · a number wasn't from your data",
+  ai: "AI · aapke shop data se",
+  offline: "Offline · rule-based, same shop data",
+  "ai-guarded": "AI wording hidden · number data se nahi tha",
 };
 
 const timeOf = (iso: string | null) => (iso ? new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date(iso)) : undefined);
@@ -69,7 +69,9 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
   useEffect(() => {
     fetch("/api/salaahkaar/nudges").then((r) => r.json()).then((d) => setNudges(d.cards ?? [])).catch(() => setNudges([]));
   }, []);
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [turns]);
+  // Bring the newest question to the top so its whole answer reads downwards.
+  const lastId = turns.at(-1)?.id;
+  useEffect(() => { if (lastId) bottom.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }, [lastId]);
 
   const latestPending = () => {
     for (const t of [...turns].reverse()) for (const a of t.reply?.actions ?? []) {
@@ -115,74 +117,86 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
 
   const voice = useVoiceInput((transcript) => { if (transcript) void ask(transcript, true); });
 
+  const empty = turns.length === 0;
   return (
-    <div className="pb-56">
-      <section className="-mx-4 -mt-6 rounded-b-xl bg-navy-950 px-4 py-6 text-surface">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+    <div className="pb-32">
+      <section className="hero -mx-4 -mt-5 rounded-none rounded-b-[28px] px-4 pb-5 pt-5">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-500 text-navy-950"><Mic aria-hidden="true" /></span>
+          <div className="min-w-0 flex-1">
             <h1 className="text-surface">Salaahkaar</h1>
-            <p className="mt-2 text-sm text-on-dark-muted">Aapka dukaan adviser · Hindi / Hinglish</p>
+            <p className="truncate text-sm text-on-dark-muted">Dukaan adviser · Hindi / Hinglish</p>
           </div>
-          <span className={`badge ${aiMode === "ai" ? "bg-navy-700 text-surface" : "tone-warning"}`}>{aiMode === "ai" ? "AI" : "OFFLINE MODE"}</span>
+          <span className={`badge ${aiMode === "ai" ? "bg-white/10 text-surface" : "tone-warning"}`}>{aiMode === "ai" ? "AI" : "OFFLINE"}</span>
         </div>
-        <div className="mt-5 flex flex-col gap-2">
+        <div className="chip-row mt-4" role="group" aria-label="Suggested questions">
           {suggestions.map((s) => (
-            <button key={s} type="button" disabled={busy} className="min-h-12 rounded-md bg-navy-700 px-3 py-2 text-left text-sm" onClick={() => ask(s)}>{s}</button>
+            <button key={s} type="button" disabled={busy} className="chip chip-dark" onClick={() => ask(s)}>{s}</button>
           ))}
         </div>
       </section>
 
-      {nudges && nudges.length > 0 && turns.length === 0 && (
-        <section className="mt-6 space-y-3" aria-label="Abhi dhyan dein">
+      {empty && nudges === null && <div className="mt-5 space-y-3"><div className="skeleton h-4 w-32" /><div className="skeleton h-28" /></div>}
+      {empty && nudges && nudges.length > 0 && (
+        <section className="mt-5 space-y-3" aria-label="Abhi dhyan dein">
           <p className="section-label">Abhi dhyan dein</p>
           {nudges.map((c, i) => <InsightCard key={i} headline={c.headline} facts={c.facts} source={c.source} fresh />)}
         </section>
       )}
 
-      <section className="mt-6 space-y-4" aria-live="polite">
+      <section className="mt-5 space-y-4" aria-live="polite">
         {turns.map((t) => (
-          <div key={t.id} className="space-y-3">
-            <ChatBubble hindi={t.question} />
-            {!t.reply && !t.error && <div className="card flex items-center gap-3"><LoaderCircle className="spin text-blue-600" aria-hidden="true" /><p>Dukaan ka data dekh rahe hain…</p></div>}
+          <div key={t.id} ref={t.id === lastId ? bottom : undefined} className="scroll-mt-20 space-y-3">
+            <ChatBubble hindi={t.question} voice={t.viaVoice} />
+            {!t.reply && !t.error && (
+              <div className="flex items-center gap-3 px-1">
+                <Avatar />
+                <p className="secondary flex items-center gap-2"><LoaderCircle className="spin !h-4 !w-4 text-blue-600" aria-hidden="true" />Dukaan ka data dekh rahe hain…</p>
+              </div>
+            )}
             {t.error && <ErrorBanner message={t.error} />}
             {t.reply && (
               <>
-                <div className="card">
-                  <p className="text-[17px] leading-relaxed">{t.reply.display}</p>
-                  <div className="mt-3 flex items-center justify-between gap-2">
-                    <span className={`badge ${t.reply.mode === "ai" ? "tone-staging" : "tone-warning"}`}>{MODE_LABEL[t.reply.mode]}</span>
-                    <Button variant="quiet" aria-label="Jawab suniye" onClick={() => speakHindi(t.reply!.speak)}><Volume2 aria-hidden="true" /></Button>
+                <div className="fade-up flex items-start gap-3">
+                  <Avatar />
+                  <div className="card min-w-0 flex-1 rounded-tl-md">
+                    <p className="text-[16px] leading-7">{t.reply.display}</p>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <span className={`badge ${t.reply.mode === "ai" ? "tone-info" : "tone-warning"}`}>{MODE_LABEL[t.reply.mode]}</span>
+                      <button type="button" className="icon-btn -my-2 -mr-2 text-blue-600" aria-label="Jawab suniye" onClick={() => speakHindi(t.reply!.speak)}><Volume2 aria-hidden="true" /></button>
+                    </div>
                   </div>
                 </div>
                 {t.reply.cards.map((c, i) => <InsightCard key={i} headline={c.headline} facts={c.facts} source={c.source} />)}
                 {t.reply.actions.map((a) => {
                   const current = actions[a.id] ?? a;
                   return (
-                    <ActionCard key={a.id} title={current.title} draft={current.draft} state={actionState(current)}
+                    <ActionCard key={a.id} kind={current.type} title={current.title} draft={current.draft} state={actionState(current)}
                       onApprove={() => decide(a.id, "approve")} onReject={() => decide(a.id, "reject")}
                       timestamps={{ approved: timeOf(current.decidedAt), done: timeOf(current.executedAt) }}
                       via={current.deliveredVia} error={current.status === "FAILED" ? `Execution failed: ${current.error ?? "unknown error"}` : null} />
                   );
                 })}
+                {t.reply.actions.some((a) => (actions[a.id] ?? a).status === "PENDING") && (
+                  <p className="caption px-1 text-muted">Bol sakte hain: “Haan, bhej do” ya “Abhi nahi”.</p>
+                )}
               </>
             )}
           </div>
         ))}
         {actionError && <ErrorBanner message={actionError} />}
-        <div ref={bottom} />
       </section>
 
-      <form
-        className="fixed bottom-[calc(81px+env(safe-area-inset-bottom))] left-1/2 z-20 w-full max-w-[420px] -translate-x-1/2 border-t border-line bg-surface p-4"
-        onSubmit={(e) => { e.preventDefault(); void ask(text); }}
-      >
-        <VoiceComposer state={voice.state} value={text} onChange={setText} onVoice={voiceEnabled && !busy ? voice.toggle : undefined}
-          idleHint={voiceEnabled ? "Mic dabaiye ya type karein" : "Voice not set up (Sarvam key). Type karein."} />
-        {voice.error && <p className="caption mt-1 text-danger">{voice.error}</p>}
-        <Button type="submit" className="mt-3 w-full" disabled={!text.trim() || busy}>
-          {busy ? <LoaderCircle className="spin" aria-hidden="true" /> : <Send aria-hidden="true" />}Poochiye
-        </Button>
+      <form className="action-bar" onSubmit={(e) => { e.preventDefault(); void ask(text); }}>
+        <VoiceComposer submit busy={busy} state={voice.state} value={text} onChange={setText} onVoice={voiceEnabled ? voice.toggle : undefined}
+          placeholder={voiceEnabled ? "Poochiye… ya mic dabaiye" : "Type karke poochiye…"}
+          idleHint={voiceEnabled ? "" : "Voice not set up (Sarvam key). Typing works."} />
+        {voice.error && <p className="caption mt-1 px-1 text-danger">{voice.error}</p>}
       </form>
     </div>
   );
+}
+
+function Avatar() {
+  return <span className="mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-navy-950 text-sky-500" aria-hidden="true"><Mic className="!h-4 !w-4" /></span>;
 }

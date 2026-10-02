@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useTransition } from "react";
 import QRCode from "qrcode";
-import { Banknote, BookUser, ExternalLink, QrCode, RotateCcw } from "lucide-react";
+import { Banknote, BookUser, Check, ExternalLink, LoaderCircle, Plus, QrCode, RotateCcw, Search } from "lucide-react";
 import { Button, ErrorBanner, Sheet } from "@/components/ui/primitives";
 import { MoneyText, PaidToast, PaymentStatus, StockDelta, type PaymentState } from "./components";
 import { formatMoney } from "@/lib/format-money";
@@ -77,21 +77,20 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
   if (done) return <PaidView bill={bill} done={done} onNewBill={onNewBill} />;
 
   const stepState: PaymentState = !status || status.status === "CREATED" ? "waiting" : status.status === "PENDING" ? "verifying" : status.status === "SUCCESS" ? "paid" : "failed";
+  const onlineOff = onlineMode === "live-off";
 
   return (
-    <section aria-label="Payment" className="mt-4 space-y-4">
+    <section aria-label="Payment" className="mt-5 space-y-4">
       {!payment ? (
-        <div className="card">
-          <p className="section-label">Payment kaise?</p>
-          <div className="mt-3 grid gap-2">
-            <Button className="w-full justify-start" disabled={pending || onlineMode === "live-off"} onClick={startOnline}>
-              <QrCode aria-hidden="true" />{onlineMode === "staging" ? "Paytm se lein (staging)" : onlineMode === "mock" ? "Online · mock payment" : "Online payment off"}
-            </Button>
-            <Button variant="quiet" className="w-full justify-start" disabled={pending} onClick={() => setSheet("cash")}><Banknote aria-hidden="true" />Cash</Button>
-            <Button variant="quiet" className="w-full justify-start" disabled={pending} onClick={() => setSheet("udhaar")}><BookUser aria-hidden="true" />Udhaar (Khata)</Button>
+        <div>
+          <p className="section-label mb-2">Payment kaise?</p>
+          <div className="grid grid-cols-3 gap-2">
+            <PayOption primary icon={<QrCode aria-hidden="true" />} label="Online" sub={onlineMode === "staging" ? "Paytm staging" : onlineMode === "mock" ? "Mock" : "Off"} disabled={pending || onlineOff} onClick={startOnline} />
+            <PayOption icon={<Banknote aria-hidden="true" />} label="Cash" sub="Haath mein" disabled={pending} onClick={() => setSheet("cash")} />
+            <PayOption icon={<BookUser aria-hidden="true" />} label="Udhaar" sub="Khata mein" disabled={pending} onClick={() => setSheet("udhaar")} />
           </div>
-          {onlineMode === "mock" && <p className="caption mt-3 rounded-sm bg-warning-tint p-2 text-warning">Mock payment · not a real Paytm transaction. Server verification still runs.</p>}
-          {onlineMode === "live-off" && <p className="caption mt-3 text-muted">Paytm credentials are not set. Cash and udhaar still work.</p>}
+          {onlineMode === "mock" && <p className="caption mt-3 rounded-xl bg-warning-tint p-3 text-warning">Mock payment · not a real Paytm transaction. Server verification still runs.</p>}
+          {onlineOff && <p className="caption mt-3 text-muted">Paytm credentials are not set. Cash and udhaar still work.</p>}
         </div>
       ) : (
         <OnlineWait payment={payment} state={stepState} rejected={status?.rejectedReason ?? null} onRetry={startOnline} busy={pending} />
@@ -99,13 +98,17 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
       {error && <ErrorBanner message={error} />}
 
       <Sheet title={`Cash ${formatMoney(bill.totalPaise)} mil gaya?`} open={sheet === "cash"} onClose={() => setSheet(null)}>
-        <p className="secondary">Recorded by you, not verified by a gateway. Stock updates now.</p>
+        <div className="rounded-2xl bg-canvas p-4 text-center">
+          <Banknote className="mx-auto !h-8 !w-8 text-success" aria-hidden="true" />
+          <p className="mt-2 text-2xl font-bold text-navy-950 tabular-nums">{formatMoney(bill.totalPaise)}</p>
+          <p className="caption mt-1 text-muted">Aapke dwara recorded · gateway verified nahi. Stock abhi update hoga.</p>
+        </div>
         <Button className="mt-4 w-full" disabled={pending} onClick={() => run(async () => {
           const r = await api<{ stock: Delta[] }>(`/api/bills/${bill.id}/pay`, { method: "POST", body: JSON.stringify({ method: "cash" }) });
           setSheet(null);
           void announce(bill.totalPaise);
           setDone({ kind: "cash", stock: r.stock, at: timeNow() });
-        })}>Haan, cash mil gaya</Button>
+        })}>{pending ? <LoaderCircle className="spin" aria-hidden="true" /> : <Check aria-hidden="true" />}Haan, cash mil gaya</Button>
       </Sheet>
       <UdhaarSheet open={sheet === "udhaar"} onClose={() => setSheet(null)} total={bill.totalPaise} busy={pending} onPick={(c) => run(async () => {
         const r = await api<{ stock: Delta[]; balancePaise: number }>(`/api/bills/${bill.id}/pay`, { method: "POST", body: JSON.stringify({ method: "udhaar", customerId: c.id }) });
@@ -113,6 +116,16 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
         setDone({ kind: "udhaar", customer: c.name, balancePaise: r.balancePaise, stock: r.stock });
       })} />
     </section>
+  );
+}
+
+function PayOption({ icon, label, sub, onClick, disabled, primary = false }: { icon: React.ReactNode; label: string; sub: string; onClick: () => void; disabled: boolean; primary?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className={`flex min-h-28 flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition-transform active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 ${primary ? "bg-blue-600 text-surface shadow-[0_6px_16px_rgb(0_114_188/.25)]" : "border border-line bg-surface text-navy-950 shadow-card"}`}>
+      <span className={`grid h-10 w-10 place-items-center rounded-xl ${primary ? "bg-white/15" : "bg-canvas"}`}>{icon}</span>
+      <span className="leading-tight"><span className="block font-semibold">{label}</span><span className={`caption ${primary ? "text-white/80" : "text-muted"}`}>{sub}</span></span>
+    </button>
   );
 }
 
@@ -129,20 +142,22 @@ function OnlineWait({ payment, state, rejected, onRetry, busy }: { payment: Paym
   return (
     <div className="card">
       <div className="flex items-center justify-between gap-2">
-        <p className="section-label">{payment.label}</p>
-        <span className={`badge ${payment.provider === "mock" ? "tone-warning" : "tone-staging"}`}>{payment.provider === "mock" ? "MOCK" : "PAYTM STAGING"}</span>
+        <p className="font-semibold text-navy-950">{payment.label}</p>
+        <span className={`badge ${payment.provider === "mock" ? "tone-warning" : "tone-staging"}`}>{payment.provider === "mock" ? "MOCK · NOT REAL MONEY" : "PAYTM STAGING"}</span>
       </div>
       {!failed && (
         <>
-          <div className="mx-auto mt-4 w-56 max-w-full rounded-lg border border-line p-2" aria-label="Payment QR code for the customer" role="img" dangerouslySetInnerHTML={{ __html: svg }} />
-          <p className="secondary mt-3 text-center">Customer phone se scan karein</p>
+          <div className="mx-auto mt-4 w-60 max-w-full rounded-2xl border border-line bg-surface p-3 shadow-card">
+            {svg ? <div aria-label="Payment QR code for the customer" role="img" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="skeleton aspect-square w-full" />}
+          </div>
+          <p className="secondary mt-3 text-center">Customer apne phone se scan kare</p>
           <a className="btn btn-secondary mt-3 w-full" href={url || payment.payPath} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" />Customer view kholiye</a>
         </>
       )}
-      <div className="mt-4"><PaymentStatus state={state} orderId={payment.orderId} /></div>
+      <div className="mt-5 rounded-2xl bg-canvas p-4"><PaymentStatus state={state} orderId={payment.orderId} provider={payment.provider} /></div>
       {failed && (
         <div className="mt-4 space-y-3">
-          <p className="rounded-sm bg-danger-tint p-3 text-sm text-danger">{rejected ? `Rejected by server: ${rejected}.` : "Payment fail hua."} Bill abhi unpaid hai.</p>
+          <p className="rounded-xl bg-danger-tint p-3 text-sm text-danger">{rejected ? `Rejected by server: ${rejected}.` : "Payment fail hua."} Bill abhi unpaid hai.</p>
           <Button className="w-full" disabled={busy} onClick={onRetry}><RotateCcw aria-hidden="true" />Dobara try karein</Button>
         </div>
       )}
@@ -152,25 +167,33 @@ function OnlineWait({ payment, state, rejected, onRetry, busy }: { payment: Paym
 
 function UdhaarSheet({ open, onClose, total, onPick, busy }: { open: boolean; onClose: () => void; total: number; onPick: (c: { id: string; name: string }) => void; busy: boolean }) {
   const [customers, setCustomers] = useState<Array<{ id: string; name: string; balancePaise: number }> | null>(null);
+  const [q, setQ] = useState("");
   const loaded = useRef(false);
   useEffect(() => {
     if (!open || loaded.current) return;
     loaded.current = true;
     api<{ customers: Array<{ id: string; name: string; balancePaise: number }> }>("/api/customers").then((r) => setCustomers(r.customers)).catch(() => setCustomers([]));
   }, [open]);
+  const shown = (customers ?? []).filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <Sheet title={`Udhaar · ${formatMoney(total)}`} open={open} onClose={onClose}>
-      <p className="secondary mb-3">Kiske khate mein likhein? Stock updates now; this bill stays unpaid until settled.</p>
-      {!customers ? <p className="secondary">Loading…</p> : (
-        <ul className="max-h-[50dvh] divide-y divide-line overflow-y-auto">
-          {customers.map((c) => (
+      <p className="secondary mb-3">Kiske khate mein likhein? Stock abhi update hoga; bill settle hone tak unpaid rahega.</p>
+      <div className="relative mb-2">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />
+        <input className="field pl-11" placeholder="Customer ka naam" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
+      </div>
+      {!customers ? <div className="skeleton h-40" /> : (
+        <ul className="max-h-[45dvh] overflow-y-auto">
+          {shown.map((c) => (
             <li key={c.id}>
-              <button type="button" disabled={busy} onClick={() => onPick(c)} className="flex min-h-14 w-full items-center justify-between gap-3 py-2 text-left">
-                <span className="font-medium">{c.name}</span>
+              <button type="button" disabled={busy} onClick={() => onPick(c)} className="flex min-h-14 w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-canvas">
+                <span className="avatar h-9 w-9 bg-sky-100 text-xs text-blue-700" aria-hidden="true">{c.name.split(" ").slice(0, 2).map((s) => s[0]).join("")}</span>
+                <span className="min-w-0 flex-1 font-medium">{c.name}</span>
                 <span className="caption text-muted">Baaki <MoneyText paise={c.balancePaise} size="sm" /></span>
               </button>
             </li>
           ))}
+          {shown.length === 0 && <li className="secondary py-6 text-center">Koi customer nahi mila.</li>}
         </ul>
       )}
     </Sheet>
@@ -179,23 +202,27 @@ function UdhaarSheet({ open, onClose, total, onPick, busy }: { open: boolean; on
 
 function PaidView({ bill, done, onNewBill }: { bill: BillView; done: Done; onNewBill: () => void }) {
   return (
-    <section className="mt-4 space-y-4" aria-live="polite">
+    <section className="mt-5 space-y-4" aria-live="polite">
       {done.kind === "udhaar" ? (
-        <div className="rounded-xl bg-navy-950 p-4 text-surface">
-          <p className="text-lg font-semibold">Udhaar mein likh diya</p>
-          <p className="caption mt-1 text-on-dark-muted">{done.customer} ab {formatMoney(done.balancePaise)} dena hai · bill unpaid until settled</p>
+        <div className="card text-center">
+          <span className="pop-in mx-auto grid h-14 w-14 place-items-center rounded-full bg-sky-100 text-blue-600"><BookUser aria-hidden="true" /></span>
+          <p className="mt-3 text-xl font-bold text-navy-950">Udhaar mein likh diya</p>
+          <p className="secondary mt-1">{done.customer} ka baaki ab <span className="font-semibold text-navy-950">{formatMoney(done.balancePaise)}</span></p>
+          <p className="caption mt-2 text-muted">Bill settle hone tak unpaid rahega</p>
         </div>
       ) : (
-        <PaidToast amount={bill.totalPaise} time={done.at}
-          note={done.kind === "cash" ? `Cash recorded by you · ${done.at}` : done.provider === "mock" ? `Mock payment verified by server · not real money · ${done.at}` : `Verified by server with Paytm staging · ${done.at}`} />
+        <PaidToast amount={bill.totalPaise} time={done.at} kind={done.kind === "cash" ? "cash" : "verified"}
+          note={done.kind === "cash" ? `Cash · aapne record kiya · ${done.at}` : done.provider === "mock" ? `Mock payment verified by server · not real money · ${done.at}` : `Verified by server with Paytm staging · ${done.at}`} />
       )}
       {done.stock.length > 0 && (
-        <div className="card space-y-2">
-          <p className="section-label">Stock updated</p>
-          {done.stock.map((s) => <StockDelta key={s.productId} name={s.name} before={s.before} after={s.after} reorderLevel={s.reorderLevel} />)}
+        <div>
+          <p className="section-label mb-2">Stock updated</p>
+          <div className="list-card">
+            {done.stock.map((s) => <StockDelta key={s.productId} name={s.name} before={s.before} after={s.after} reorderLevel={s.reorderLevel} />)}
+          </div>
         </div>
       )}
-      <Button className="w-full" onClick={onNewBill}>Naya bill</Button>
+      <Button className="w-full" onClick={onNewBill}><Plus aria-hidden="true" />Naya bill</Button>
     </section>
   );
 }

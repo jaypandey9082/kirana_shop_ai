@@ -5,15 +5,19 @@ import { getMerchantId, listCatalogue, type CatalogueProduct } from "@/lib/bills
 import { getPaymentMode } from "@/lib/payments/service";
 import { openAiConfigured } from "@/lib/ai/extract";
 import { sarvamConfigured } from "@/lib/ai/sarvam";
+import { salesSummary } from "@/lib/insights";
 
 export default async function Page() {
   let catalogue: CatalogueProduct[];
+  let today: { totalPaise: number; bills: number; source: string } | null = null;
   try {
     const sql = getSql();
-    catalogue = await listCatalogue(sql, await getMerchantId(sql));
+    const merchantId = await getMerchantId(sql);
+    catalogue = await listCatalogue(sql, merchantId);
+    today = await salesSummary(sql, merchantId, "today").catch(() => null);
   } catch (error) {
     console.error(error);
-    return <><h1>Counter</h1><div className="mt-6"><ErrorBanner message="Catalogue load nahi hua. Check DATABASE_URL and run npm run db:reset." /></div></>;
+    return <><h1>Counter</h1><div className="mt-4"><ErrorBanner message="Catalogue load nahi hua. Check DATABASE_URL and run npm run db:reset." /></div></>;
   }
   const mode = getPaymentMode();
   const ai = {
@@ -21,5 +25,5 @@ export default async function Page() {
     voice: sarvamConfigured(),
     parchiLabel: openAiConfigured() ? `OpenAI ${process.env.OPENAI_MODEL!.trim()}` : null,
   };
-  return <CounterScreen catalogue={catalogue} onlineMode={mode === "misconfigured" ? "live-off" : mode} ai={ai} />;
+  return <CounterScreen catalogue={catalogue} onlineMode={mode === "misconfigured" ? "live-off" : mode} ai={ai} today={today && { totalPaise: today.totalPaise, bills: today.bills, source: today.source }} />;
 }

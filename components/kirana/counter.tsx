@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ListPlus, Plus, ScanLine, Search } from "lucide-react";
-import { Button, ErrorBanner } from "@/components/ui/primitives";
+import { CheckCircle2, ChevronDown, FileText, Mic, Plus, ScanBarcode, Search, TrendingUp } from "lucide-react";
+import { ErrorBanner, ScreenHead } from "@/components/ui/primitives";
 import { BillLine, BillSummary, InputModeTabs, MoneyText, type InputMode } from "./components";
 import { matchProduct, normalize } from "@/lib/matcher";
+import { formatMoney } from "@/lib/format-money";
 import type { BillView, CatalogueProduct } from "@/lib/bills";
 import { PaymentPanel, type OnlineMode } from "./payment";
 import { ParchiPanel, VoicePanel, type AiCapabilities, type LinesResult } from "./inputs";
@@ -12,6 +13,9 @@ import { ParchiPanel, VoicePanel, type AiCapabilities, type LinesResult } from "
 const STORAGE_KEY = "kirana.counter.billId";
 /** Everyday items shown as one-tap chips before the merchant searches. */
 const QUICK_SKUS = ["DAI-001", "DAI-006", "DAI-008", "STP-007", "SNK-005", "SNK-007", "BEV-002", "HOM-001"];
+const BARCODE = /^\d{8,14}$/;
+
+export interface TodayGlance { totalPaise: number; bills: number; source: string }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
@@ -22,11 +26,11 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 function stockLabel(p: CatalogueProduct) {
   if (p.stock === 0) return { text: "Khatam", tone: "tone-danger" };
-  if (p.stock < p.reorderLevel) return { text: `${p.stock} left`, tone: "tone-warning" };
-  return { text: `${p.stock} in stock`, tone: "tone-neutral" };
+  if (p.stock < p.reorderLevel) return { text: `${p.stock} bache`, tone: "tone-warning" };
+  return { text: `${p.stock} stock`, tone: "tone-neutral" };
 }
 
-export function CounterScreen({ catalogue, onlineMode, ai }: { catalogue: CatalogueProduct[]; onlineMode: OnlineMode; ai: AiCapabilities }) {
+export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue: CatalogueProduct[]; onlineMode: OnlineMode; ai: AiCapabilities; today: TodayGlance | null }) {
   const [mode, setMode] = useState<InputMode>("Parchi");
   const [query, setQuery] = useState("");
   const [bill, setBill] = useState<BillView | null>(null);
@@ -86,6 +90,7 @@ export function CounterScreen({ catalogue, onlineMode, ai }: { catalogue: Catalo
   const confirm = () => run(async () => {
     const { bill: next } = await api<{ bill: BillView }>(`/api/bills/${bill!.id}/confirm`, { method: "POST" });
     setBill(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   const onInputResult = (r: LinesResult, n: string) => { setBill(r.bill); setUnmatched(r.unmatched); setNote(n); };
@@ -93,159 +98,170 @@ export function CounterScreen({ catalogue, onlineMode, ai }: { catalogue: Catalo
   const newBill = () => { sessionStorage.removeItem(STORAGE_KEY); setBill(null); setUnmatched([]); setNote(null); setError(null); window.scrollTo({ top: 0 }); router.refresh(); /* fresh stock counts */ };
 
   // Search results: best matches for a single item, or nothing while a list is being typed.
-  const isList = /[,\n]|\b\d+\s+\S/.test(query.trim()) && query.trim().split(/\s+/).length > 1;
+  const trimmed = query.trim();
+  const isBarcode = BARCODE.test(trimmed);
+  const isList = /[,\n]|\b\d+\s+\S/.test(trimmed) && trimmed.split(/\s+/).length > 1;
   const results = useMemo(() => {
     const q = normalize(query);
-    if (!q || isList) return [];
+    if (!q || isList || isBarcode) return [];
     return catalogue
       .map((p) => ({ p, score: matchProduct(q, [p]).confidence }))
       .filter((r) => r.score >= 0.5)
       .sort((a, b) => b.score - a.score)
       .slice(0, 6)
       .map((r) => r.p);
-  }, [query, isList, catalogue]);
+  }, [query, isList, isBarcode, catalogue]);
   const quick = useMemo(() => QUICK_SKUS.map((s) => catalogue.find((p) => p.sku === s)).filter((p): p is CatalogueProduct => !!p), [catalogue]);
 
   if (bill?.status === "CONFIRMED") return <Confirmed bill={bill} onNew={newBill} onlineMode={onlineMode} />;
 
   const lines = bill?.lines ?? [];
+  const flagged = lines.filter((l) => l.needsReview);
+  const clean = lines.filter((l) => !l.needsReview);
   const reviewCount = bill?.needsReviewCount ?? 0;
   const disabledReason = !lines.length ? "Add at least one item" : reviewCount ? `${reviewCount} item${reviewCount > 1 ? "s" : ""} check karna hai` : undefined;
 
+  const submitItems = () => {
+    if (!trimmed) return;
+    if (isBarcode) {
+      const hit = catalogue.find((p) => p.barcode === trimmed);
+      if (hit) addProduct(hit.id, "scan"); else setError("Barcode catalogue mein nahi mila.");
+    } else if (isList || results.length === 0) addText(trimmed);
+    else if (results.length === 1 || matchProduct(trimmed, catalogue).needsReview === false) addProduct(results[0].id);
+    else addText(trimmed);
+  };
+
   return (
     <>
-      <div className="mb-6 flex items-end justify-between gap-3">
-        <div><h1>Counter</h1><p className="secondary mt-1">Naya bill, aapke tareeke se.</p></div>
-        {bill && <span className="caption text-muted tabular-nums">Bill #{bill.number}</span>}
-      </div>
-      <InputModeTabs value={mode} onChange={setMode} />
+      <ScreenHead title="Counter" subtitle={bill ? "Bill ban raha hai" : "Naya bill, aapke tareeke se"}>
+        {bill && <span className="badge tone-neutral shrink-0 tabular-nums">Bill #{bill.number}</span>}
+      </ScreenHead>
+
+      {!lines.length && today && (
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-tint text-success"><TrendingUp className="!h-[18px] !w-[18px]" aria-hidden="true" /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-muted">Aaj ki bikri</p>
+            <p className="caption truncate text-muted" title={today.source}>Source: bill register</p>
+          </div>
+          <div className="text-right">
+            <p className="text-lg font-bold leading-6 text-navy-950 tabular-nums">{formatMoney(today.totalPaise)}</p>
+            <p className="caption text-muted tabular-nums">{today.bills} bills</p>
+          </div>
+        </div>
+      )}
+
+      <InputModeTabs value={mode} onChange={setMode} icons={{ Parchi: <FileText aria-hidden="true" />, Bolkar: <Mic aria-hidden="true" />, Items: <Search aria-hidden="true" /> }} />
 
       <div className="mt-4">
-        {mode === "Manual" || mode === "Scan" ? (
-          <form
-            className="card"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const q = query.trim();
-              if (!q) return;
-              if (mode === "Scan") {
-                const hit = catalogue.find((p) => p.barcode === q);
-                if (hit) addProduct(hit.id, "scan"); else setError("Barcode catalogue mein nahi mila.");
-              } else if (isList || results.length === 0) addText(q);
-              else if (results.length === 1 || matchProduct(q, catalogue).needsReview === false) addProduct(results[0].id);
-              else addText(q);
-            }}
-          >
-            <label htmlFor="counter-search" className="section-label">{mode === "Scan" ? "Barcode" : "Item ya list"}</label>
-            <div className="mt-2 flex gap-2">
+        {mode === "Items" ? (
+          <form className="card" onSubmit={(e) => { e.preventDefault(); submitItems(); }}>
+            <label htmlFor="counter-search" className="sr-only">Item, list ya barcode</label>
+            <div className="flex gap-2">
               <div className="relative flex-1">
-                {mode === "Scan" ? <ScanLine className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" /> : <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />}
-                <input
-                  id="counter-search" className="field pl-10" autoComplete="off" inputMode={mode === "Scan" ? "numeric" : "text"}
-                  placeholder={mode === "Scan" ? "Scan or type barcode" : "doodh… ya 2 doodh, 1 bread"}
-                  value={query} onChange={(e) => setQuery(e.target.value)}
-                />
+                {isBarcode ? <ScanBarcode className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" /> : <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />}
+                <input id="counter-search" className="field pl-11" autoComplete="off" placeholder="doodh… ya 2 doodh, 1 bread"
+                  value={query} onChange={(e) => setQuery(e.target.value)} />
               </div>
-              <Button type="submit" aria-label={isList ? "Add list" : "Add"} disabled={!query.trim() || pending}><ListPlus aria-hidden="true" /></Button>
+              <button type="submit" className="btn btn-primary w-12 px-0" aria-label={isList ? "Add list" : "Add"} disabled={!trimmed || pending}><Plus aria-hidden="true" /></button>
             </div>
-            {mode === "Manual" && isList && <p className="caption mt-2 text-muted">List mode: each item is matched to the catalogue. Unsure items will ask you to choose.</p>}
-            {mode === "Scan" && <p className="caption mt-2 text-muted">USB/Bluetooth scanners type the code here. Camera scanning is not built yet.</p>}
+            <p className="caption mt-2 text-muted">
+              {isBarcode ? "Barcode · Enter dabaiye" : isList ? "List: har item catalogue se match hoga. Jo pakka nahi, woh aap chunenge." : "Naam, poori list, ya scanner se barcode."}
+            </p>
 
-            {mode === "Manual" && (results.length > 0 || (!query && !bill?.lines.length)) && (
-              <ul className="mt-3 divide-y divide-line">
-                {(query ? results : quick).map((p) => {
-                  const s = stockLabel(p);
-                  return (
-                    <li key={p.id}>
-                      <button type="button" disabled={pending} onClick={() => addProduct(p.id)} className="flex min-h-14 w-full items-center gap-3 py-2 text-left">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium">{p.name}</p>
-                          <p className="caption mt-0.5 flex items-center gap-2 text-muted"><MoneyText paise={p.pricePaise} size="sm" /><span className={`badge ${s.tone}`}>{s.text}</span></p>
-                        </div>
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-sky-100 text-blue-600"><Plus aria-hidden="true" /></span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+            {(results.length > 0 || !query) && (
+              <>
+                {!query && <p className="section-label mt-4">Roz ke items</p>}
+                <ul className="-mx-2 mt-2">
+                  {(query ? results : quick).map((p) => {
+                    const s = stockLabel(p);
+                    return (
+                      <li key={p.id}>
+                        <button type="button" disabled={pending} onClick={() => addProduct(p.id)} className="flex min-h-14 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium leading-6">{p.name}</p>
+                            <p className="mt-0.5 flex items-center gap-2"><MoneyText paise={p.pricePaise} size="sm" /><span className={`badge ${s.tone}`}>{s.text}</span></p>
+                          </div>
+                          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-blue-600/30 text-blue-600"><Plus className="!h-[18px] !w-[18px]" aria-hidden="true" /></span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
-            {mode === "Manual" && !query && !bill?.lines.length && <p className="caption mt-2 text-muted">Roz ke items · tap to add</p>}
           </form>
         ) : mode === "Parchi" ? (
-          <ParchiPanel caps={ai} ensureBill={ensureBill} onResult={onInputResult} />
-        ) : mode === "Voice" ? (
-          <VoicePanel caps={ai} ensureBill={ensureBill} onResult={onInputResult} />
+          <ParchiPanel caps={ai} ensureBill={ensureBill} onResult={onInputResult} compact={lines.length > 0} />
         ) : (
-          <div className="card text-center">
-            <h2>Product photo abhi nahi</h2>
-            <p className="secondary mt-2">Recognising products from a photo is a stretch goal. Use Parchi, Voice or Manual.</p>
-            <Button variant="secondary" className="mt-4 w-full" onClick={() => setMode("Parchi")}>Parchi se bill</Button>
-          </div>
+          <VoicePanel caps={ai} ensureBill={ensureBill} onResult={onInputResult} />
         )}
       </div>
 
       {error && <div className="mt-4"><ErrorBanner message={error} /></div>}
-      {note && bill?.lines.length ? <p className="caption mt-4 text-muted" role="status">{note}</p> : null}
       {unmatched.length > 0 && (
-        <p className="mt-4 rounded-lg bg-warning-tint p-3 text-sm text-warning" role="status">
-          Catalogue mein nahi mila: {unmatched.join(", ")}. Search karke add karein.
+        <p className="mt-4 rounded-2xl bg-warning-tint p-3 text-sm text-warning" role="status">
+          Catalogue mein nahi mila: {unmatched.join(", ")}. Items tab se search karke add karein.
         </p>
       )}
 
-      <section aria-label="Bill" className="mt-6 space-y-3" aria-busy={pending}>
-        {lines.length > 0 && <p className="section-label">Bill items</p>}
-        {lines.map((l) => (
-          <BillLine
-            key={l.id}
-            busy={pending}
-            line={{
-              name: l.needsReview ? `“${l.rawText ?? l.name}” — kaunsa?` : l.name,
-              qty: l.qty, pricePaise: l.needsReview ? null : l.unitPricePaise,
-              state: l.needsReview ? "needs-check" : "confirmed",
-              reason: l.needsReview ? "Sahi product chuniye:" : undefined,
-              candidates: l.candidates.map((c) => ({ id: c.id, label: `${c.name} · ${formatRupees(c.pricePaise)}` })),
-            }}
-            onQuantity={(d) => patchLine(l.id, { qty: l.qty + d })}
-            onChoose={(productId) => patchLine(l.id, { productId })}
-            onRemove={() => removeLine(l.id)}
-          />
-        ))}
-      </section>
-
       {lines.length > 0 && (
-        <div className="mt-6">
+        <section aria-label="Bill" className="mt-6" aria-busy={pending}>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="section-label">Bill items</p>
+            {note && <span className="caption text-muted" role="status">{note}</span>}
+          </div>
+          <div className="space-y-3">
+            {flagged.map((l) => (
+              <BillLine key={l.id} busy={pending}
+                line={{ name: l.name, raw: l.rawText ?? l.name, qty: l.qty, pricePaise: null, state: "needs-check", candidates: l.candidates }}
+                onQuantity={(d) => patchLine(l.id, { qty: l.qty + d })} onChoose={(productId) => patchLine(l.id, { productId })} onRemove={() => removeLine(l.id)} />
+            ))}
+            {clean.length > 0 && (
+              <div className="list-card">
+                {clean.map((l) => (
+                  <BillLine key={l.id} busy={pending} line={{ name: l.name, qty: l.qty, pricePaise: l.unitPricePaise, state: "confirmed" }}
+                    onQuantity={(d) => patchLine(l.id, { qty: l.qty + d })} onRemove={() => removeLine(l.id)} />
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="caption mt-2 text-muted">Daam catalogue se aate hain, AI se nahi. Stock confirm ke baad hi badlega.</p>
+          <div className="h-28" aria-hidden="true" />
           <BillSummary sticky count={bill?.itemCount ?? 0} total={bill?.totalPaise ?? 0} disabledReason={disabledReason} onConfirm={confirm} busy={pending} />
-        </div>
+        </section>
       )}
     </>
   );
 }
 
-function formatRupees(paise: number) {
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(paise / 100);
-}
-
 function Confirmed({ bill, onNew, onlineMode }: { bill: BillView; onNew: () => void; onlineMode: OnlineMode }) {
   const [settled, setSettled] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   return (
     <>
-      <h1>Counter</h1>
-      <section className="mt-6 rounded-xl bg-navy-950 p-6 text-surface">
-        <p className="flex items-center gap-2 text-sm text-on-dark-muted"><CheckCircle2 aria-hidden="true" />Bill #{bill.number} {settled ?? "confirmed"}</p>
-        <div className="my-3"><MoneyText paise={bill.totalPaise} size="display" /></div>
-        <p className="caption text-on-dark-muted">{bill.itemCount} items · prices from the catalogue</p>
+      <ScreenHead title="Counter" subtitle={settled ? "Bill poora hua" : "Payment lijiye"} />
+      <section className="hero p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-sm text-on-dark-muted"><CheckCircle2 className="!h-4 !w-4" aria-hidden="true" />Bill #{bill.number} · {settled ?? "confirmed"}</p>
+            <button type="button" className="mt-1 flex items-center gap-1 text-sm font-medium text-surface" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+              {bill.itemCount} items{open ? "" : " dekhiye"}<ChevronDown className={`!h-4 !w-4 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+          </div>
+          <span className="text-[28px] font-bold leading-9 tracking-tight tabular-nums">{formatMoney(bill.totalPaise)}</span>
+        </div>
+        {open && (
+          <ul className="mt-3 divide-y divide-white/10 border-t border-white/10">
+            {bill.lines.map((l) => (
+              <li key={l.id} className="flex justify-between gap-3 py-2.5 text-sm">
+                <span>{l.name} <span className="text-on-dark-muted tabular-nums">× {l.qty}</span></span>
+                <MoneyText paise={l.lineTotalPaise} size="sm" />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
-      <details className="card mt-4">
-        <summary className="cursor-pointer text-sm font-semibold text-navy-950">Bill items ({bill.lines.length})</summary>
-        <ul className="mt-2 divide-y divide-line">
-          {bill.lines.map((l) => (
-            <li key={l.id} className="flex justify-between gap-3 py-3 text-sm">
-              <span>{l.name} <span className="text-muted tabular-nums">× {l.qty}</span></span>
-              <MoneyText paise={l.lineTotalPaise} size="sm" />
-            </li>
-          ))}
-        </ul>
-      </details>
       <PaymentPanel bill={bill} onlineMode={onlineMode} onNewBill={onNew} onSettled={setSettled} />
     </>
   );
