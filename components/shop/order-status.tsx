@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { CheckCircle2, ChefHat, PackageCheck, ShoppingBag } from "lucide-react";
+import { Check, ChefHat, PackageCheck, ShoppingBag } from "lucide-react";
 import { MoneyText } from "@/components/kirana/components";
 import type { OrderView } from "@/lib/orders";
 
@@ -24,25 +24,35 @@ export function OrderStatus({ initial, shopName }: { initial: OrderView; shopNam
   }, [order.id, order.fulfilment]);
 
   const reached = order.fulfilment === "COMPLETED" ? 3 : STEPS.findIndex((s) => s.key === order.fulfilment);
+  const paid = order.status === "PAID";
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-[420px] bg-canvas p-4">
-      <section className="rounded-xl bg-navy-950 p-5 text-surface">
-        <p className="caption text-on-dark-muted">Order #{order.number} · {shopName}</p>
-        <h1 className="mt-1 text-surface">{order.status !== "PAID" ? "Payment pending" : order.fulfilment === "COMPLETED" ? "Order complete" : "Aapka order"}</h1>
-        <div className="mt-3"><MoneyText paise={order.totalPaise} size="display" /></div>
+    <main className="mx-auto min-h-dvh w-full max-w-[420px] bg-canvas px-4 pb-10 pt-[calc(16px+env(safe-area-inset-top))]">
+      <header className="flex items-center gap-3">
+        <span className="avatar h-10 w-10 bg-navy-950 text-surface" aria-hidden="true">{shopName.charAt(0)}</span>
+        <div className="min-w-0 flex-1"><p className="truncate font-semibold text-navy-950">{shopName}</p><p className="caption text-muted">Order #{order.number} · {order.mode === "delivery" ? "Delivery" : "Pickup"}</p></div>
+        <MoneyText paise={order.totalPaise} />
+      </header>
+      <section className="card mt-4" aria-live="polite">
+        <h1>{!paid ? "Payment pending" : order.fulfilment === "COMPLETED" ? "Order complete" : order.fulfilment === "READY" ? (order.mode === "delivery" ? "Delivery par hai" : "Pickup ke liye ready") : "Order taiyaar ho raha hai"}</h1>
+        <p className="secondary mt-1">{paid ? "Yeh page apne aap update hota hai." : "Payment complete hone ke baad order dukaan tak pahunchega."}</p>
+        {paid && (
+          <ol className="mt-5">
+            {STEPS.map((s, i) => {
+              const done = i < reached || order.fulfilment === "COMPLETED";
+              const active = i === reached && order.fulfilment !== "COMPLETED";
+              return (
+                <li key={s.key} className="relative flex items-center gap-3 pb-5 last:pb-0">
+                  {i < STEPS.length - 1 && <span className={`absolute left-[19px] top-10 h-[calc(100%-40px)] w-0.5 ${done ? "bg-success-500" : "bg-line"}`} aria-hidden="true" />}
+                  <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? "bg-success-500 text-surface" : active ? "bg-sky-100 text-blue-600 ring-4 ring-sky-100/60" : "bg-canvas text-muted"}`}>{done ? <Check aria-hidden="true" /> : <s.Icon aria-hidden="true" />}</span>
+                  <span className={active ? "font-semibold text-navy-950" : done ? "text-ink" : "text-muted"}>{s.label}{s.key === "READY" && order.mode === "delivery" ? " · delivery par" : ""}</span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
       </section>
-      {order.status === "PAID" ? (
-        <ol className="card mt-4 space-y-4" aria-live="polite">
-          {STEPS.map((s, i) => (
-            <li key={s.key} className={`flex items-center gap-3 ${i <= reached ? "font-semibold text-navy-950" : "text-muted"}`}>
-              <span className={`grid h-10 w-10 place-items-center rounded-full ${i <= reached ? "bg-success-tint text-success" : "bg-canvas"}`}>{i < reached || order.fulfilment === "COMPLETED" ? <CheckCircle2 aria-hidden="true" /> : <s.Icon aria-hidden="true" />}</span>
-              {s.label}{s.key === "READY" && order.mode === "delivery" ? " · delivery par" : ""}
-            </li>
-          ))}
-        </ol>
-      ) : <p className="card mt-4 secondary">Payment complete hone ke baad order dukaan tak pahunchega.</p>}
-      <ul className="card mt-4 divide-y divide-line text-sm">
-        {order.items.map((i) => <li key={i.name} className="flex justify-between py-2"><span>{i.name}</span><span className="tabular-nums text-muted">× {i.qty}</span></li>)}
+      <ul className="card mt-3 p-0 text-sm">
+        {order.items.map((i) => <li key={i.name} className="flex justify-between border-b border-line px-4 py-2.5 last:border-0"><span>{i.name}</span><span className="tabular-nums text-muted">× {i.qty}</span></li>)}
       </ul>
     </main>
   );

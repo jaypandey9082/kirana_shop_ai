@@ -286,11 +286,9 @@ export function EventLogItem({ name, summary, timestamp, verified, tone = "neutr
     <div className="relative flex gap-3 py-3 pl-1 pr-1">
       <span className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full ${dot}`}>{icon ?? <span className="h-2 w-2 rounded-full bg-current" />}</span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-[15px] leading-6 text-ink">{summary}</p>
-          <span className="caption shrink-0 pt-1 text-muted tabular-nums">{timestamp ?? "—"}</span>
-        </div>
+        <p className="pt-1 text-[15px] leading-6 text-ink">{summary}</p>
         <div className="mt-1 flex flex-wrap items-center gap-2">
+          <span className="caption text-muted tabular-nums">{timestamp ?? "—"}</span>
           <code className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">{name}</code>
           {verified && <span className="badge tone-success"><ShieldCheck aria-hidden="true" />Verified</span>}
         </div>
