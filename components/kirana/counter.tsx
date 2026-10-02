@@ -160,7 +160,7 @@ export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue:
             <div className="flex gap-2">
               <div className="relative flex-1">
                 {isBarcode ? <ScanBarcode className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" /> : <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />}
-                <input id="counter-search" className="field pl-11" autoComplete="off" placeholder="doodh… ya 2 doodh, 1 bread"
+                <input id="counter-search" className="field pl-11" autoComplete="off" placeholder="doodh, ya 2 doodh 1 bread"
                   value={query} onChange={(e) => setQuery(e.target.value)} />
               </div>
               <button type="submit" className="btn btn-primary w-12 px-0" aria-label={isList ? "Add list" : "Add"} disabled={!trimmed || pending}><Plus aria-hidden="true" /></button>
@@ -169,7 +169,7 @@ export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue:
               {isBarcode ? "Barcode · Enter dabaiye" : isList ? "List: har item catalogue se match hoga. Jo pakka nahi, woh aap chunenge." : "Naam, poori list, ya scanner se barcode."}
             </p>
 
-            {(results.length > 0 || !query) && (
+            {(results.length > 0 || (!query && !lines.length)) && (
               <>
                 {!query && <p className="section-label mt-4">Roz ke items</p>}
                 <ul className="-mx-2 mt-2">
