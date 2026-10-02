@@ -121,7 +121,7 @@ Rules: no other hex values in components. If a new colour is needed, add a token
 
 1. **ModeBadge**: variants demo / staging / mock / live-off. Text always visible, never colour alone.
 2. **MoneyText**: formats INR, sizes sm/md/display, optional strike or tone.
-3. **InputModeTabs**: Scan · Photo · Voice · Parchi · Manual. Segmented control, 44 px tall, selected = navy fill with white text.
+3. **InputModeTabs**: Parchi · Bolkar · Items (Items also takes scanner barcodes; product-photo recognition stays a stretch goal, so there is no Photo tab). Segmented control on a soft track, 44 px tall, selected = white pill.
 4. **BillLine**: name, qty × price, line total. Variants:
    - `confirmed`: plain row.
    - `needs-check`: warning tint background, 1.5 px dashed warning border, a short reason ("Parchi says 'biskut 3'"), two candidate chips; the bill cannot be confirmed until it is resolved. Quantity stepper on every line.
