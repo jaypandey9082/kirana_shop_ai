@@ -109,9 +109,18 @@ async function offlineAnswer(ctx: ToolContext, question: string): Promise<Salaah
       speak.push(`${top.name} सिर्फ ${top.stock} बचे हैं, आज रात तक खत्म हो सकता है। मंगवाने का ड्राफ्ट तैयार है, हाँ बोलें तो भेज दूँ।`);
       await runTool(ctx, "propose_reorder", { sku: top.sku, qty: null }, used, results);
     } else {
-      await runTool(ctx, "get_low_stock", {}, used, results);
+      // Nothing runs out before the morning restock (e.g. after closing time), but items
+      // already below their reorder level still deserve a reorder suggestion.
+      const { data: low } = await runTool(ctx, "get_low_stock", {}, used, results);
+      const items = (low as { items: Array<{ sku: string; name: string; stock: number; reorderLevel: number }> }).items;
       display.push("Kal subah ke restock tak koi item khatam hone ka khatra nahi.");
       speak.push("कल सुबह तक कोई सामान खत्म होने का खतरा नहीं है।");
+      if (items.length) {
+        const top = items[0];
+        display.push(`Par ${top.name} reorder level se neeche hai (${top.stock} bache, level ${top.reorderLevel}). Reorder ka draft bana diya hai, approve karein to bhej dunga.`);
+        speak.push(`पर ${top.name} कम है, सिर्फ ${top.stock} बचे हैं। मंगवाने का ड्राफ्ट तैयार है।`);
+        await runTool(ctx, "propose_reorder", { sku: top.sku, qty: null }, used, results);
+      }
     }
   }
   if (intents.includes("dues")) {
@@ -164,7 +173,7 @@ Rules:
 - Always call tools to get numbers. Never state a number (money, quantity, count, percentage, time, days) that is not in a tool result or in the question.
 - Keep answers to one or two short sentences a busy shopkeeper can hear in a few seconds.
 - "display" is natural Hinglish in Latin script. "speak" is the same message in simple Hindi (Devanagari), using digits for numbers.
-- If something will run out, call propose_reorder for the most urgent item. If asked to remind a customer, call propose_reminder.
+- If something will run out, call propose_reorder for the most urgent item. If nothing will run out but items are below their reorder level (get_low_stock), propose a reorder for the lowest one. If asked to remind a customer, call propose_reminder.
 - Drafts are not sent. Say they need the shopkeeper's approval ("approve karein to bhej dunga"). Never say a message was sent or a payment was made.
 - No financial advice, loans or credit scoring. If asked something you have no tool for, say so briefly.`;
 

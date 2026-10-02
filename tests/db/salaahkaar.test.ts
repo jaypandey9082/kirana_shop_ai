@@ -126,3 +126,23 @@ describe.skipIf(!url)("Salaahkaar", () => {
     expect(cards.some((c) => c.headline.includes("₹2,150"))).toBe(true);
   });
 });
+
+describe.skipIf(!url)("Salaahkaar after closing time", () => {
+  it("still drafts a reorder for items below their reorder level", async () => {
+    const sql = createSql(url!);
+    try {
+      await migrate(sql);
+      const late = new Date("2026-10-03T16:45:00Z"); // 22:15 IST, shop closed
+      await resetDemo(sql, late);
+      const m = await getMerchantId(sql);
+      const r = await askSalaahkaar(sql, m, "kya khatam hone wala hai?", { now: late, env: {} });
+      expect(r.display).toContain("koi item khatam hone ka khatra nahi");
+      expect(r.display).toContain("reorder level se neeche");
+      expect(r.tools).toEqual(["forecast_runout", "get_low_stock", "propose_reorder"]);
+      expect(r.actions[0]).toMatchObject({ type: "reorder", status: "PENDING" });
+      expect(numbersAreGrounded(r.display, allowedNumbers(["kya khatam hone wala hai?", ...r.evidence]))).toBe(true);
+    } finally {
+      await sql.end();
+    }
+  });
+});
