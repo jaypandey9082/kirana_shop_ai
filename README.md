@@ -21,8 +21,8 @@ do" → action executed once. Plus the QR storefront, live orders and Khata.
 | Database, demo data, reset | Done, tested (local Postgres) |
 | Counter, matcher, review flags | Done, tested |
 | Payments + `bill.paid` | Done, tested with the **mock gateway**; Paytm staging code written, not run |
-| Parchi / voice | Done; tested with fakes and the cached demo parchi; live OpenAI/Sarvam not run |
-| Insights, Salaahkaar | Done, tested; offline mode live; OpenAI agent tested with a scripted fake |
+| Parchi / voice | Done; **live parchi tested with OpenAI gpt-4.1-mini** (2.5 s, matches the cached reading); Sarvam voice not run yet |
+| Insights, Salaahkaar | Done, tested; **live OpenAI agent tested** (gpt-4.1-mini, smoke test 3/3, number guard passed); offline mode is the fallback |
 | Approvals, outbox, n8n | Done, tested; built-in outbox live; n8n workflow untested |
 | Storefront, orders, Khata | Done, tested |
 | Deployment | Not deployed yet (needs Vercel + Supabase accounts) |

@@ -64,5 +64,8 @@ check the Outbox shows "n8n".
 
 ## Tested so far
 
-Locally only (Postgres 17, mock gateway, no AI keys): all unit and DB tests, and the
-smoke test. **Not yet tested:** Vercel, Supabase, Paytm staging, OpenAI, Sarvam, n8n.
+Locally (Postgres 17, mock gateway): all unit and DB tests, and the smoke test.
+OpenAI tested live on 3 Oct 2026 with `OPENAI_MODEL=gpt-4.1-mini`: parchi photo ≈2.5–4 s,
+Salaahkaar ≈5–8 s, smoke test passed 3/3. Compared with gpt-5.4-mini (faster agent but did not
+draft the reorder) and gpt-5-mini (agent ≈17 s): `scripts/bench-models.mts`. Add keys with
+`scripts/set-keys.sh`. **Not yet tested:** Vercel, Supabase, Paytm staging, Sarvam, n8n.
