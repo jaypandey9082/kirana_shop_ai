@@ -38,7 +38,10 @@ talks to the database.
 | `DEMO_RESET_ENABLED` | `true` for the finale only |
 | `DEMO_RESET_SECRET` | random, 32+ characters (`openssl rand -hex 16`) |
 
-3. Deploy, then open `https://<app>/api/ready`: every line should say what you expect.
+3. Functions run in Mumbai (`bom1`, set in `vercel.json`) next to the Supabase database
+   (`ap-south-1`). Without it Vercel runs them in Washington (`iad1`) and every query
+   crosses the world: a payment took ~13 s instead of ~1 s.
+4. Deploy, then open `https://<app>/api/ready`: every line should say what you expect.
 
 ## 3. Paytm staging
 
