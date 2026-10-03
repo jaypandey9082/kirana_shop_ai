@@ -102,7 +102,7 @@
   .chip-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin-inline: -16px; padding-inline: 16px; }
   .chip-row::-webkit-scrollbar { display: none; }
   .chip { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; min-height: 40px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--color-line); background: var(--color-surface); font-size: 14px; font-weight: 500; color: var(--color-navy-950); white-space: nowrap; transition: background-color 160ms ease-out, border-color 160ms ease-out; }
-  .chip[aria-pressed="true"] { background: var(--color-navy-950); border-color: var(--color-navy-950); color: var(--color-surface); }
+  .chip[aria-pressed="true"], .chip[aria-checked="true"] { background: var(--color-navy-950); border-color: var(--color-navy-950); color: var(--color-surface); }
   .chip svg.lucide { width: 16px; height: 16px; }
   .chip-dark { background: rgb(255 255 255 / .08); border-color: rgb(255 255 255 / .14); color: var(--color-surface); }
   .chip-dark:hover:not(:disabled) { background: rgb(255 255 255 / .14); }

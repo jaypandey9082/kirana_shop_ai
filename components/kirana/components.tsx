@@ -222,6 +222,7 @@ export function ActionCard({ title, draft, state, onApprove, onReject, timestamp
       )}
       {error && <p className="mt-3 rounded-lg bg-danger-tint p-2 text-sm text-danger">{error}</p>}
       {state === "done" && via !== "n8n" && <p className="caption mt-3 text-muted">Outbox mein ready · WhatsApp auto-send nahi</p>}
+      {state === "done" && Icon === Truck && <a href="/orders?view=suppliers" className="btn btn-secondary mt-3 w-full"><Truck aria-hidden="true" />Supplier order dekhiye</a>}
     </div>
   );
 }

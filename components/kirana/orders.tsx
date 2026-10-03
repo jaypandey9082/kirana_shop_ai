@@ -1,9 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import { Bike, ExternalLink, LoaderCircle, QrCode, ShoppingBag, Store } from "lucide-react";
+import { Bike, ExternalLink, LoaderCircle, QrCode, ShoppingBag, Store, Truck } from "lucide-react";
 import { Button, EmptyState, ErrorBanner, ScreenHead, Sheet, Skeleton } from "@/components/ui/primitives";
 import { MoneyText } from "./components";
+import { SupplierOrders } from "./suppliers";
 import type { Fulfilment, OrderView } from "@/lib/orders";
 
 const NEXT: Record<Fulfilment, { to: Fulfilment; label: string } | null> = {
@@ -22,6 +23,13 @@ export function OrdersScreen({ shopSlug, shopName }: { shopSlug: string; shopNam
   const [busy, setBusy] = useState<string | null>(null);
   const [qr, setQr] = useState(false);
   const [tab, setTab] = useState<"active" | "pending" | "done">("active");
+  const [view, setView] = useState<"customers" | "suppliers">("customers");
+  // /orders?view=suppliers opens the supplier side (linked from an executed reorder).
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("view") !== "suppliers") return;
+    const t = setTimeout(() => setView("suppliers"), 0);
+    return () => clearTimeout(t);
+  }, []);
   const known = useRef<Set<string> | null>(null);
 
   useEffect(() => {
@@ -73,8 +81,13 @@ export function OrdersScreen({ shopSlug, shopName }: { shopSlug: string; shopNam
   return (
     <>
       <ScreenHead title="Orders">
-        <Button variant="secondary" className="shrink-0" onClick={() => setQr(true)}><QrCode aria-hidden="true" />Shop QR</Button>
+        {view === "customers" && <Button variant="secondary" className="shrink-0" onClick={() => setQr(true)}><QrCode aria-hidden="true" />Shop QR</Button>}
       </ScreenHead>
+      <div role="group" aria-label="Customers or suppliers" className="chip-row mb-4">
+        <button type="button" className="chip" aria-pressed={view === "customers"} onClick={() => setView("customers")}><ShoppingBag aria-hidden="true" />Customers</button>
+        <button type="button" className="chip" aria-pressed={view === "suppliers"} onClick={() => setView("suppliers")}><Truck aria-hidden="true" />Suppliers</button>
+      </div>
+      {view === "suppliers" ? <SupplierOrders /> : <>
       {error && <div className="mb-4"><ErrorBanner message={error} /></div>}
       <div role="group" aria-label="Order status" className="segmented mb-4">
         {([["active", "Taiyaar karo", paid.length], ["pending", "Payment", waiting.length], ["done", "Ho gaye", done.length]] as const).map(([k, label, n]) => (
@@ -92,6 +105,7 @@ export function OrdersScreen({ shopSlug, shopName }: { shopSlug: string; shopNam
           {shown.map((o) => <OrderCard key={o.id} o={o} fresh={fresh.has(o.id)} busy={busy === o.id} onAdvance={tab === "active" ? advance : undefined} />)}
         </div>
       )}
+      </>}
       <ShopQr open={qr} onClose={() => setQr(false)} slug={shopSlug} name={shopName} />
     </>
   );

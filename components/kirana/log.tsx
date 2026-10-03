@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Activity, BadgeCheck, BellRing, CheckCircle2, CreditCard, ExternalLink, Mic, NotebookPen, Package, ReceiptText, Send, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
+import { Activity, BadgeCheck, BellRing, CheckCircle2, CreditCard, ExternalLink, Mic, NotebookPen, Package, PackageCheck, ReceiptText, Send, ShoppingBag, Truck, type LucideIcon } from "lucide-react";
 import { EmptyState, ErrorBanner, ScreenHead, Skeleton } from "@/components/ui/primitives";
 import { EventLogItem } from "./components";
 
@@ -13,7 +13,7 @@ function groupOf(type: string): Filter {
   if (type.startsWith("payment.")) return "Payments";
   if (type === "bill.on_credit" || type.startsWith("khata.")) return "Khata";
   if (type.startsWith("bill.") || type.startsWith("parchi.")) return "Bills";
-  if (type.startsWith("stock.")) return "Stock";
+  if (type.startsWith("stock.") || type.startsWith("po.") || type.startsWith("supplier.")) return "Stock";
   if (type.startsWith("action.") || type.startsWith("salaahkaar.")) return "Actions";
   return "All";
 }
@@ -95,6 +95,8 @@ export function LiveLog() {
 function visual(type: string, verified: boolean): { Icon: LucideIcon; tone: "neutral" | "success" | "info" | "warning" } {
   if (type === "bill.paid" || verified) return { Icon: BadgeCheck, tone: "success" };
   if (type.startsWith("payment.")) return { Icon: CreditCard, tone: type.endsWith("failed") || type.endsWith("rejected") ? "warning" : "info" };
+  if (type === "stock.received") return { Icon: PackageCheck, tone: "success" };
+  if (type.startsWith("po.") || type.startsWith("supplier.")) return { Icon: Truck, tone: type === "po.rejected" ? "warning" : "info" };
   if (type.startsWith("stock.")) return { Icon: Package, tone: "neutral" };
   if (type === "bill.on_credit" || type.startsWith("khata.")) return { Icon: NotebookPen, tone: "warning" };
   if (type.startsWith("bill.") || type.startsWith("parchi.")) return { Icon: ReceiptText, tone: "info" };

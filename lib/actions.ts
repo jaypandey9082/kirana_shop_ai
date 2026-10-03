@@ -16,6 +16,7 @@ import type { Sql } from "@/lib/db/client";
 import { DomainError } from "@/lib/bills";
 import { logEvent } from "@/lib/events";
 import { actionView, type ActionView } from "@/lib/salaahkaar/tools";
+import { createFromReorder } from "@/lib/purchases";
 
 type Via = "tap" | "voice";
 
@@ -106,6 +107,8 @@ export async function markExecuted(sql: Sql, id: string, deliveredVia: "n8n" | "
     await tx`insert into outbox (action_id, channel, recipient, body, link, delivered_via)
              values (${id}, ${channel}, ${String(a.payload.to ?? "")}, ${a.draft_text}, ${link}, ${deliveredVia})`;
     await tx`update actions set status = 'EXECUTED', executed_at = now(), error = null where id = ${id}`;
+    // A reorder also becomes a purchase order the distributor sees (one per action).
+    if (a.type === "reorder") await createFromReorder(tx, { id, merchant_id: a.merchant_id, payload: a.payload });
     await tx`insert into events (merchant_id, type, summary, data) values (${a.merchant_id}, 'action.executed',
       ${`Done via ${deliveredVia}: ${String(a.payload.title)} → ${String(a.payload.to ?? "")} (message ready in Outbox; not auto-sent on WhatsApp)`},
       ${tx.json({ actionId: id, deliveredVia })})`;

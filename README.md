@@ -32,8 +32,9 @@ do" → action executed once. Plus the QR storefront, live orders and Khata.
 | Voice | Live with OpenAI (`gpt-4o-mini-transcribe` / `gpt-4o-mini-tts`, streamed); Sarvam used automatically when `SARVAM_API_KEY` is set (untested with a real key) |
 | Approvals, outbox, n8n | Done, tested; built-in outbox live; n8n workflow untested |
 | Storefront, orders (nav badge), Khata | Done, tested |
+| Distributor loop | Done, tested: approved reorder → distributor page (`/d/all`) accepts → "Maal aa gaya" adds stock once → supplier dues. Demo distributors, no login, assumed rates |
 | Deployment | Vercel (functions in Mumbai) + Supabase, auto-deploys from `main` |
-| Not built | Receiving stock / count corrections in the UI, product and price editing, online udhaar settlement, product-photo recognition |
+| Not built | Stock count corrections, receiving goods not ordered in the app, distributor login/catalogue, product and price editing, online udhaar settlement, product-photo recognition |
 
 Run the whole journey against any running copy: `npm run smoke` (local) or
 `npm run smoke -- https://kirana-shop-ai.vercel.app`. Projector view: `/demo`.

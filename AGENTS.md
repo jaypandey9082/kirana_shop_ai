@@ -199,10 +199,11 @@ Live: **https://kirana-shop-ai.vercel.app** (deploys automatically on every push
 | Voice | Live with OpenAI (streamed, ~1 s to first sound, cached); Sarvam adapter written but untested with a real key |
 | Storefront, orders (nav badge), Khata, live log, `/demo` presenter | Working |
 | n8n | Workflow file exists, untested; built-in outbox is used |
+| Distributor loop | Working: approved reorder → purchase order (`lib/purchases.ts`) → demo distributor page `/d/<slug>` (`/d/all` for the projector) accepts with ETA/short qty or rejects → shopkeeper "Maal aa gaya" (Orders → Suppliers) adds stock once → supplier dues (Salaahkaar tool `get_supplier_dues`). Distributor pages have no login (demo); rates are an assumption (catalogue − 15%, whole rupees) |
 
-Not built (say so if asked): receiving stock ("maal aa gaya") and count corrections in the UI
-(stock goes down on sales; `stock_movements` supports `restock`/`adjustment`), adding products or
-editing prices, online udhaar settlement, product-photo recognition, Cognee memory.
+Not built (say so if asked): stock count corrections in the UI, receiving stock that wasn't
+ordered through the app (e.g. from a distributor bill photo), distributor login/catalogue/schemes,
+adding products or editing prices, online udhaar settlement, product-photo recognition, Cognee memory.
 
 ## Working in this repo
 
@@ -239,6 +240,7 @@ npm run smoke [-- URL] # golden-path rehearsal; needs DEMO_RESET_SECRET (local) 
 - `lib/insights.ts`: deterministic numbers; `lib/salaahkaar/{tools,agent,intent}.ts`: agent, tools, number guard, approval intent
 - `lib/ai/{extract,voice,sarvam}.ts`: OpenAI parchi reading and the voice adapter
 - `lib/actions.ts`, `lib/orders.ts`, `lib/khata.ts`, `lib/events.ts`: approvals/outbox, storefront orders, udhaar, append-only log
+- `lib/purchases.ts`, `components/distributor/portal.tsx`, `components/kirana/suppliers.tsx`: distributor loop (purchase orders, receiving, supplier dues)
 
 ### UI rules (from team feedback)
 

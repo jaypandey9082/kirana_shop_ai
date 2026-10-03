@@ -221,5 +221,11 @@ Installable web app, `GET /api/ready`, presenter page `/demo`, golden-path smoke
   Error" from failing unpaid orders. Initiate Transaction still returns resultCode 239 until
   Paytm activates the staging account; the demo uses the labelled mock gateway.
 
+- **Distributor loop** (afternoon): migration `0006_purchase_orders.sql`; an executed reorder creates
+  one purchase order; demo distributor page `/d/<slug>` (and `/d/all`) accepts with delivery time and
+  short quantities or rejects; Orders → Suppliers shows status, "Maal aa gaya" (stock +qty once,
+  `stock_movements.reason = restock` linked by `po_id`) and "Payment diya" (recorded, no money moves);
+  Salaahkaar tool `get_supplier_dues`; `/demo` shows four phones; smoke test covers the loop.
+
 Still open: Paytm activation, Sarvam key, phone tests on the venue network, rehearsals and the
 backup recording; stock receiving and catalogue editing screens (not built).

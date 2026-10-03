@@ -1,7 +1,7 @@
 /**
  * Golden-path rehearsal against a running app (local or deployed):
  *   reset → parchi → fix flagged line → confirm → online pay → verified → stock/log →
- *   Salaahkaar → approve by voice → executed + outbox.
+ *   Salaahkaar → approve by voice → executed + outbox → distributor accepts → maal aa gaya.
  *
  * Usage:  npm run smoke                      (http://localhost:3000)
  *         npm run smoke -- https://your-app.vercel.app
@@ -118,10 +118,27 @@ await step("“Haan, bhej do” → approved → executed once", async () => {
   assert(outbox.length === 1, `${outbox.length} outbox rows`);
 });
 
+await step("distributor accepts; “Maal aa gaya” adds stock once", async () => {
+  type Po = { id: string; status: string; supplierSlug: string; items: Array<{ id: string; productId: string; name: string; qtyOrdered: number }> };
+  const { orders } = await call<{ orders: Po[] }>("GET", "/api/purchases");
+  const po = orders[0];
+  assert(po && po.status === "SENT", `purchase order ${po?.status ?? "missing"}`);
+  const { orders: seen } = await call<{ orders: Po[] }>("GET", `/api/distributor/${po.supplierSlug}/orders`);
+  assert(seen.some((o) => o.id === po.id), "distributor can't see the order");
+  await call("POST", `/api/purchases/${po.id}/accept`, { eta: "Kal subah", items: po.items.map((i) => ({ id: i.id, qty: i.qtyOrdered })) });
+  const stockOf = async () => (await call<{ products: Array<{ id: string; stock: number }> }>("GET", "/api/catalogue")).products.find((p) => p.id === po.items[0].productId)!.stock;
+  const before = await stockOf();
+  await call("POST", `/api/purchases/${po.id}/receive`);
+  await call("POST", `/api/purchases/${po.id}/receive`); // a double tap must not add twice
+  const after = await stockOf();
+  assert(after === before + po.items[0].qtyOrdered, `stock ${before} → ${after}`);
+  console.log(`      ${po.items[0].name}: ${before} → ${after} · ${po.supplierSlug}`);
+});
+
 await step("event log shows the whole chain", async () => {
   const { events } = await call<{ events: Array<{ type: string }> }>("GET", "/api/events");
   const types = new Set(events.map((e) => e.type));
-  for (const t of ["parchi.cached", "bill.confirmed", "payment.created", "bill.paid", "salaahkaar.answer", "action.approved", "action.executed"]) assert(types.has(t), `missing ${t}`);
+  for (const t of ["parchi.cached", "bill.confirmed", "payment.created", "bill.paid", "salaahkaar.answer", "action.approved", "action.executed", "po.sent", "po.accepted", "stock.received"]) assert(types.has(t), `missing ${t}`);
 });
 
 console.log(failures ? `\n${failures} step(s) failed.` : `\nGolden path passed${ready && (ready as Record<string, { detail: string }>).payments?.detail ? ` (${(ready as Record<string, { detail: string }>).payments.detail})` : ""}.`);

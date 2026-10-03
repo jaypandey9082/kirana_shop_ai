@@ -22,8 +22,8 @@ describe("voice approval intent", () => {
 });
 
 describe("tool contracts", () => {
-  it("has exactly seven strict tools and none that move money or send", () => {
-    expect(TOOLS.map((t) => t.name)).toEqual(["get_sales_summary", "get_low_stock", "forecast_runout", "get_slow_movers", "get_overdue_dues", "propose_reorder", "propose_reminder"]);
+  it("has exactly eight strict tools and none that move money or send", () => {
+    expect(TOOLS.map((t) => t.name)).toEqual(["get_sales_summary", "get_low_stock", "forecast_runout", "get_slow_movers", "get_overdue_dues", "get_supplier_dues", "propose_reorder", "propose_reminder"]);
     for (const t of TOOLS) {
       expect(t.parameters.additionalProperties).toBe(false);
       expect(Object.keys(t.parameters.properties).sort()).toEqual([...t.parameters.required].sort());

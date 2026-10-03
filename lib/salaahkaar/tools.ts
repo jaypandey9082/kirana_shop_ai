@@ -10,6 +10,7 @@ import { forecastRunout, khataDues, lowStock, overdueDues, salesSummary, slowMov
 import { normalize } from "@/lib/matcher";
 import { supplierFor } from "@/lib/demo/suppliers";
 import { logEvent } from "@/lib/events";
+import { supplierDues } from "@/lib/purchases";
 import { istStartOfDay } from "@/lib/time";
 
 export interface InsightCardData { kind: "insight"; headline: string; facts: string[]; source: string }
@@ -126,6 +127,20 @@ export const TOOLS: ToolSpec[] = [
         data: { ...r, count: r.items.length, items: r.items.map((i) => ({ ...i, balance: formatMoney(i.balancePaise) })), total: formatMoney(r.totalPaise) },
         cards: [{ kind: "insight", headline: r.items.length ? `${formatMoney(r.totalPaise)} udhaar ${minDays}+ din purana` : r.summary,
           facts: r.items.slice(0, 3).map((i) => `${i.name}: ${formatMoney(i.balancePaise)} · ${i.daysOverdue} din`), source: r.source }],
+      };
+    },
+  },
+  {
+    name: "get_supplier_dues",
+    description: "How much the shop owes its distributors for goods received and not yet paid, by supplier.",
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false },
+    async run(ctx) {
+      const r = await supplierDues(ctx.sql, ctx.merchantId);
+      const name = (s: string) => s.replace(" (demo supplier)", "");
+      return {
+        data: { total: formatMoney(r.totalPaise), totalPaise: r.totalPaise, suppliers: r.suppliers.map((s) => ({ supplier: name(s.supplier), amount: formatMoney(s.total), orders: s.orders })), source: r.source },
+        cards: [{ kind: "insight", headline: r.totalPaise ? `Suppliers ko ${formatMoney(r.totalPaise)} dena hai` : "Kisi supplier ka paisa baaki nahi",
+          facts: r.suppliers.slice(0, 3).map((s) => `${name(s.supplier)}: ${formatMoney(s.total)} · ${s.orders} order`), source: r.source }],
       };
     },
   },

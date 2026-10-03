@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { Activity, Check, FileText, RotateCcw, Smartphone, Store, TriangleAlert } from "lucide-react";
+import { Activity, Check, FileText, RotateCcw, Smartphone, Store, TriangleAlert, Truck } from "lucide-react";
 import { Button } from "@/components/ui/primitives";
 
 interface Ready { [k: string]: { ok: boolean; detail: string } | string | null }
@@ -30,7 +30,8 @@ export function Presenter({ shopSlug }: { shopSlug: string }) {
   const wrap = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const fit = () => setScale(Math.max(0.5, Math.min(1, (window.innerHeight - 190) / PHONE.h)));
+    // Four phones side by side: fit both the height and the width of the projector.
+    const fit = () => setScale(Math.max(0.45, Math.min(1, (window.innerHeight - 190) / PHONE.h, (window.innerWidth - 48 - 3 * 20) / (4 * (PHONE.w + 20)))));
     fit();
     window.addEventListener("resize", fit);
     fetch("/api/ready").then((r) => r.json()).then(setReady).catch(() => setReady(null));
@@ -85,9 +86,10 @@ export function Presenter({ shopSlug }: { shopSlug: string }) {
           <Button variant="secondary" disabled={busy} onClick={reset}><RotateCcw aria-hidden="true" />Reset demo</Button>
         </div>
       </header>
-      <div ref={wrap} className="flex flex-wrap items-start justify-center gap-6">
+      <div ref={wrap} className="flex flex-wrap items-start justify-center gap-5">
         <Phone title="Customer" hint="Shop QR se order aur payment" icon={<Store aria-hidden="true" />} src={`/s/${shopSlug}`} scale={scale} frameKey={frameKey} />
         <Phone title="Shopkeeper" hint="Counter · Khata · Salaahkaar" icon={<Smartphone aria-hidden="true" />} src="/counter" scale={scale} frameKey={frameKey} />
+        <Phone title="Distributor" hint="Reorder accept, delivery time" icon={<Truck aria-hidden="true" />} src="/d/all" scale={scale} frameKey={frameKey} />
         <Phone title="Live log" hint="Har event, server se verified" icon={<Activity aria-hidden="true" className="text-sky-500" />} src="/log" scale={scale} frameKey={frameKey} />
       </div>
     </main>
