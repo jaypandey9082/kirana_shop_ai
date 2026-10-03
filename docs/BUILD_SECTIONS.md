@@ -199,13 +199,27 @@ merchant Orders shows the paid order; Khata overview and Ramesh's ledger.
 Not built: online (gateway) settlement of udhaar via a payment link; settlements are
 recorded by the merchant (cash/UPI collected outside the app).
 
-## Section 11 scope (in progress — blocked on accounts and keys)
+## Section 11 scope (done)
 
-Done: installable web app (manifest + generated icons, theme colour), `GET /api/ready`
-pre-demo checklist, presenter page `/demo` (customer, shopkeeper and live log side by side,
-protected reset), golden-path smoke test `npm run smoke [-- url]`, `docs/DEPLOY.md`,
-`docs/DEMO_RUNBOOK.md`. The smoke test passes locally (mock gateway, no AI keys).
+Installable web app, `GET /api/ready`, presenter page `/demo`, golden-path smoke test
+`npm run smoke [-- url]`, `docs/DEPLOY.md`, `docs/DEMO_RUNBOOK.md`.
 
-Blocked (needs the team): Vercel deploy, Supabase project, Paytm staging credentials and
-webhook, OpenAI and Sarvam keys, n8n instance, phone tests on the venue network, three
-full rehearsals and the backup recording.
+## Finale-day log (3 Oct 2026)
+
+- **UI refresh** (all screens): compact header with mode pill, segmented Parchi / Bolkar / Items
+  input, quick-commerce steppers, sticky bill bar, three big payment options, verified-payment
+  moment, Counter day summary tiles, per-product icons, Orders badge, text-light copy.
+- **Deployed**: GitHub `jaypandey9082/kirana_shop_ai` → Vercel (functions in `bom1`) + Supabase
+  (`ap-south-1`, RLS on all 13 tables incl. `schema_migrations`). Golden path passes on Vercel.
+- **OpenAI live**: `gpt-4.1-mini` for parchi and Salaahkaar after a benchmark
+  (`scripts/bench-models.mts`); Salaahkaar run-out times say aaj/kal explicitly; spoken text is
+  required in Devanagari.
+- **Voice**: adapter `lib/ai/voice.ts` (OpenAI now, Sarvam when keyed); streamed `GET /api/tts` with
+  CDN/memory cache and prefetch; single tap-unlocked audio player; speaker button toggles.
+- **Paytm staging**: real staging MID/key verified (checksum, `WEBSTAGING`, v3 status on
+  `securestage.paytmpayments.com`); fixed the status host and stopped "Invalid Order Id"/"System
+  Error" from failing unpaid orders. Initiate Transaction still returns resultCode 239 until
+  Paytm activates the staging account; the demo uses the labelled mock gateway.
+
+Still open: Paytm activation, Sarvam key, phone tests on the venue network, rehearsals and the
+backup recording; stock receiving and catalogue editing screens (not built).

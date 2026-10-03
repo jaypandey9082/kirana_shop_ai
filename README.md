@@ -10,6 +10,12 @@ An AI business partner for neighbourhood merchants: **Counter** billing, a QR **
 - Concept screens: [docs/mockups/](docs/mockups/)
 - Deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · Demo script: [docs/DEMO_RUNBOOK.md](docs/DEMO_RUNBOOK.md) · Section log: [docs/BUILD_SECTIONS.md](docs/BUILD_SECTIONS.md)
 
+**Live:** https://kirana-shop-ai.vercel.app (merchant app) ·
+[storefront](https://kirana-shop-ai.vercel.app/s/sharma-general-store) ·
+[projector view](https://kirana-shop-ai.vercel.app/demo) ·
+[readiness](https://kirana-shop-ai.vercel.app/api/ready). Demo data is synthetic; payments are a
+clearly labelled mock gateway until Paytm activates our staging account.
+
 ## What works today
 
 Golden path, end to end: parchi → flagged line fixed → bill → online payment verified by
@@ -18,17 +24,20 @@ do" → action executed once. Plus the QR storefront, live orders and Khata.
 
 | Area | Status |
 |---|---|
-| Database, demo data, reset | Done, tested (local Postgres) |
-| Counter, matcher, review flags | Done, tested |
-| Payments + `bill.paid` | Done, tested with the **mock gateway**; Paytm staging code written, not run |
-| Parchi / voice | Done; **live parchi tested with OpenAI gpt-4.1-mini** (2.5 s, matches the cached reading); voice live with **OpenAI** (gpt-4o-mini-transcribe / -tts) behind one adapter; adding `SARVAM_API_KEY` switches to Sarvam |
-| Insights, Salaahkaar | Done, tested; **live OpenAI agent tested** (gpt-4.1-mini, smoke test 3/3, number guard passed); offline mode is the fallback |
+| Database, demo data, reset | Done, tested; local Postgres and Supabase (Mumbai) |
+| Counter (parchi, voice, items/barcode, review flags, day summary) | Done, tested |
+| Payments + `bill.paid` | Done, tested with the **mock gateway**. Paytm staging: checksum, website name and status API verified with real staging keys; starting a transaction returns Paytm resultCode 239 until Paytm activates the account |
+| Parchi reading | Live with OpenAI `gpt-4.1-mini` (~2.5 s; matches the cached reading) |
+| Salaahkaar | Live OpenAI agent with tools, sources and the number guard; offline rule-based fallback |
+| Voice | Live with OpenAI (`gpt-4o-mini-transcribe` / `gpt-4o-mini-tts`, streamed); Sarvam used automatically when `SARVAM_API_KEY` is set (untested with a real key) |
 | Approvals, outbox, n8n | Done, tested; built-in outbox live; n8n workflow untested |
-| Storefront, orders, Khata | Done, tested |
-| Deployment | Not deployed yet (needs Vercel + Supabase accounts) |
+| Storefront, orders (nav badge), Khata | Done, tested |
+| Deployment | Vercel (functions in Mumbai) + Supabase, auto-deploys from `main` |
+| Not built | Receiving stock / count corrections in the UI, product and price editing, online udhaar settlement, product-photo recognition |
 
 Run the whole journey against any running copy: `npm run smoke` (local) or
-`npm run smoke -- https://your-app`. Projector view: `/demo`.
+`npm run smoke -- https://kirana-shop-ai.vercel.app`. Projector view: `/demo`.
+Working notes for coding agents (Codex, Claude Code): [AGENTS.md](AGENTS.md).
 
 ## Local development
 
@@ -38,7 +47,7 @@ Use Node.js 24 (`nvm use` if you use nvm), then:
 
 ```sh
 npm ci
-npm run dev
+npm run dev        # or: npm run dev:lan  (reachable from phones on the same Wi-Fi)
 ```
 
 Open http://localhost:3000.
@@ -58,8 +67,9 @@ npm run test:db              # database integration tests against kirana_test
 `POST /api/demo/reset` from the app, set `DEMO_RESET_ENABLED=true` and a random
 `DEMO_RESET_SECRET` (16+ characters) in `.env.local`, and send it in the
 `x-demo-reset-secret` header.
-When connecting providers later, copy `.env.example` to `.env.local` and populate
-the relevant values locally. Never paste secrets into source files or commit env files.
+Add provider keys with `scripts/set-keys.sh` (`ai`, `paytm` or `sarvam`): it asks for each
+value with hidden input and writes `.env.local`. Never paste secrets into source files, chat
+or commits. See `.env.example` for every setting.
 Only `NEXT_PUBLIC_` values may be exposed to the browser; all other credentials stay server-side.
 
 ```sh

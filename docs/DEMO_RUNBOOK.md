@@ -5,7 +5,8 @@ phone + projector laptop with `/demo`).
 
 ## 30 minutes before
 
-1. `https://<app>/api/ready`: database ✓, payments as expected, AI/voice as expected.
+1. https://kirana-shop-ai.vercel.app/api/ready: database ✓, payments as expected, AI/voice as expected.
+   (The `/demo` reset secret is `VERCEL_DEMO_RESET_SECRET` in `.env.local`.)
 2. `/demo` → **Reset demo** (milk back to 8, Khata ₹11,640, log cleared).
 3. Shopkeeper phone: merchant app from the home screen, on **Counter → Parchi**.
 4. Customer phone: open the shop QR (Orders → Shop QR) once so it's cached.
