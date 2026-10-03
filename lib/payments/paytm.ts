@@ -3,7 +3,8 @@
  * Docs (reviewed 30 Sep 2026): Initiate Transaction, JS Checkout, Callback/Webhook,
  * Transaction Status (v3). Hosts are configurable because Paytm's docs list different
  * staging hosts for initiate and status calls; confirm both with real credentials.
- * NOT YET TESTED against Paytm: needs staging MID + merchant key.
+ * Checked against Paytm staging on 3 Oct 2026: signing and status host work (initiate pending
+ * merchant activation, resultCode 239).
  */
 import PaytmChecksum from "paytmchecksum";
 import { paiseToRupees, rupeesToPaise, type GatewayVerification, type PaymentProvider } from "./types";
@@ -25,7 +26,7 @@ export function paytmConfigFromEnv(env: Record<string, string | undefined> = pro
     mid, key,
     website: env.PAYTM_WEBSITE?.trim() || "WEBSTAGING",
     host: env.PAYTM_HOST?.trim() || "https://securestage.paytmpayments.com",
-    statusHost: env.PAYTM_STATUS_HOST?.trim() || "https://securegw-stage.paytmpayments.in",
+    statusHost: env.PAYTM_STATUS_HOST?.trim() || "https://securestage.paytmpayments.com",
     scriptUrl: env.PAYTM_CHECKOUT_JS_URL?.trim() || undefined,
   };
 }
@@ -45,6 +46,11 @@ export function verifyPaytmChecksum(fields: Record<string, string>, key: string)
 const STATUS_MAP: Record<string, GatewayVerification["status"]> = {
   TXN_SUCCESS: "SUCCESS", PENDING: "PENDING", TXN_FAILURE: "FAILED", NO_RECORD_FOUND: "NOT_FOUND",
 };
+/**
+ * Paytm reports some non-answers as TXN_FAILURE. They must not fail an order:
+ * 334 "Invalid Order Id" = no attempt yet (staging, checked 3 Oct 2026); 501 "System Error" = unknown, retry.
+ */
+const RESULT_CODE_OVERRIDES: Record<string, GatewayVerification["status"]> = { "334": "NOT_FOUND", "501": "PENDING" };
 
 export class PaytmProvider implements PaymentProvider {
   readonly name = "paytm" as const;
@@ -84,9 +90,9 @@ export class PaytmProvider implements PaymentProvider {
   async verify(orderId: string): Promise<GatewayVerification> {
     const json = await this.post(`${this.config.statusHost}/v3/order/status`, { mid: this.config.mid, orderId });
     const body = json.body ?? {};
-    const result = body.resultInfo as { resultStatus?: string } | undefined;
+    const result = body.resultInfo as { resultStatus?: string; resultCode?: string } | undefined;
     return {
-      status: STATUS_MAP[result?.resultStatus ?? ""] ?? "PENDING",
+      status: RESULT_CODE_OVERRIDES[result?.resultCode ?? ""] ?? STATUS_MAP[result?.resultStatus ?? ""] ?? "PENDING",
       orderId: typeof body.orderId === "string" ? body.orderId : null,
       amountPaise: rupeesToPaise(body.txnAmount),
       txnId: typeof body.txnId === "string" ? body.txnId : null,

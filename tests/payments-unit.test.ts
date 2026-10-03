@@ -56,6 +56,10 @@ describe("Paytm provider (no network)", () => {
     expect((await new PaytmProvider(config, respond({ resultInfo: { resultStatus: "TXN_FAILURE" } })).verify("O1")).status).toBe("FAILED");
     expect((await new PaytmProvider(config, respond({ resultInfo: { resultStatus: "NO_RECORD_FOUND" } })).verify("O1")).status).toBe("NOT_FOUND");
     expect((await new PaytmProvider(config, respond({ resultInfo: { resultStatus: "SOMETHING_NEW" } })).verify("O1")).status).toBe("PENDING");
+    // Non-answers reported as TXN_FAILURE must not fail an order the customer hasn't paid yet.
+    expect((await new PaytmProvider(config, respond({ resultInfo: { resultStatus: "TXN_FAILURE", resultCode: "334", resultMsg: "Invalid Order Id." } })).verify("O1")).status).toBe("NOT_FOUND");
+    expect((await new PaytmProvider(config, respond({ resultInfo: { resultStatus: "TXN_FAILURE", resultCode: "501", resultMsg: "System Error." } })).verify("O1")).status).toBe("PENDING");
+    expect((await new PaytmProvider(config, respond({ resultInfo: { resultStatus: "TXN_FAILURE", resultCode: "227" } })).verify("O1")).status).toBe("FAILED");
   });
 
   it("refuses to start when Paytm says no", async () => {
