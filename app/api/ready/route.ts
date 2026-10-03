@@ -1,7 +1,7 @@
 import { getSql } from "@/lib/db/client";
 import { getPaymentMode } from "@/lib/payments/service";
 import { openAiConfigured } from "@/lib/ai/extract";
-import { sarvamConfigured } from "@/lib/ai/sarvam";
+import { getVoiceProvider } from "@/lib/ai/voice";
 import { DEMO_MERCHANT_SLUG } from "@/lib/demo/generate";
 
 /**
@@ -24,7 +24,7 @@ export async function GET() {
     database,
     payments: { mode: payment, ok: payment !== "misconfigured", detail: payment === "staging" ? "Paytm staging" : payment === "mock" ? "Mock gateway (labelled)" : "PAYMENT_PROVIDER=paytm but MID/key missing" },
     parchiAndAgent: { ok: openAiConfigured(), detail: openAiConfigured() ? `OpenAI ${process.env.OPENAI_MODEL}` : "Not set: cached demo parchi + offline Salaahkaar" },
-    voice: { ok: sarvamConfigured(), detail: sarvamConfigured() ? "Sarvam STT/TTS" : "Not set: typing + device voice" },
+    voice: (() => { const v = getVoiceProvider(); return { ok: !!v, detail: v ? v.label : "Not set: typing + device voice" }; })(),
     automation: { ok: true, detail: process.env.N8N_WEBHOOK_URL ? "n8n webhook" : "Built-in outbox" },
     demoReset: { ok: process.env.DEMO_RESET_ENABLED === "true" && (process.env.DEMO_RESET_SECRET ?? "").length >= 16, detail: process.env.DEMO_RESET_ENABLED === "true" ? "enabled (secret required)" : "disabled" },
     appUrl: process.env.APP_URL ?? null,

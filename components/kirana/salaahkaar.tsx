@@ -190,7 +190,7 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
       <form className="action-bar" onSubmit={(e) => { e.preventDefault(); void ask(text); }}>
         <VoiceComposer submit busy={busy} state={voice.state} value={text} onChange={setText} onVoice={voiceEnabled ? voice.toggle : undefined}
           placeholder={voiceEnabled ? "Poochiye… ya mic dabaiye" : "Type karke poochiye…"}
-          idleHint={voiceEnabled ? "" : "Voice not set up (Sarvam key). Typing works."} />
+          idleHint={voiceEnabled ? "" : "Voice not set up on this server. Typing works."} />
         {voice.error && <p className="caption mt-1 px-1 text-danger">{voice.error}</p>}
       </form>
     </div>

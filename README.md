@@ -21,7 +21,7 @@ do" → action executed once. Plus the QR storefront, live orders and Khata.
 | Database, demo data, reset | Done, tested (local Postgres) |
 | Counter, matcher, review flags | Done, tested |
 | Payments + `bill.paid` | Done, tested with the **mock gateway**; Paytm staging code written, not run |
-| Parchi / voice | Done; **live parchi tested with OpenAI gpt-4.1-mini** (2.5 s, matches the cached reading); Sarvam voice not run yet |
+| Parchi / voice | Done; **live parchi tested with OpenAI gpt-4.1-mini** (2.5 s, matches the cached reading); voice live with **OpenAI** (gpt-4o-mini-transcribe / -tts) behind one adapter; adding `SARVAM_API_KEY` switches to Sarvam |
 | Insights, Salaahkaar | Done, tested; **live OpenAI agent tested** (gpt-4.1-mini, smoke test 3/3, number guard passed); offline mode is the fallback |
 | Approvals, outbox, n8n | Done, tested; built-in outbox live; n8n workflow untested |
 | Storefront, orders, Khata | Done, tested |

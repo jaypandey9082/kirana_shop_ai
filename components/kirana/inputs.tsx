@@ -158,7 +158,7 @@ export function VoicePanel({ caps, ensureBill, onResult }: { caps: AiCapabilitie
         </div>
       </div>
       <label htmlFor="voice-order" className="sr-only">Spoken or typed order</label>
-      <input id="voice-order" className="field" placeholder={caps.voice ? "Transcript yahan aayega… ya type karein" : "Voice off (no Sarvam key) · type karein"} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" />
+      <input id="voice-order" className="field" placeholder={caps.voice ? "Transcript yahan aayega… ya type karein" : "Voice off on this server · type karein"} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" />
       <Button type="submit" className="mt-3 w-full" disabled={!text.trim() || adding || voice.state === "processing"}>
         {adding ? <LoaderCircle className="spin" aria-hidden="true" /> : <Plus aria-hidden="true" />}Bill mein jodein
       </Button>

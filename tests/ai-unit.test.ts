@@ -90,3 +90,33 @@ describe("spoken/Devanagari list parsing (fallback when AI is not set up)", () =
     ]);
   });
 });
+
+describe("voice provider choice", () => {
+  it("prefers Sarvam, falls back to OpenAI, and honours VOICE_PROVIDER", async () => {
+    const { getVoiceProvider, voiceConfigured } = await import("@/lib/ai/voice");
+    expect(getVoiceProvider({})).toBeNull();
+    expect(voiceConfigured({})).toBe(false);
+    expect(getVoiceProvider({ OPENAI_API_KEY: "sk-test" })?.name).toBe("openai");
+    expect(getVoiceProvider({ SARVAM_API_KEY: "s", OPENAI_API_KEY: "sk-test" })?.name).toBe("sarvam");
+    expect(getVoiceProvider({ VOICE_PROVIDER: "openai", SARVAM_API_KEY: "s", OPENAI_API_KEY: "sk-test" })?.name).toBe("openai");
+    // A forced provider without its key means no voice, never a silent switch.
+    expect(getVoiceProvider({ VOICE_PROVIDER: "sarvam", OPENAI_API_KEY: "sk-test" })).toBeNull();
+    expect(getVoiceProvider({ OPENAI_API_KEY: "sk-test", OPENAI_STT_MODEL: "whisper-1" })?.label).toContain("whisper-1");
+  });
+
+  it("OpenAI voice sends the shop prompt and returns base64 mp3", async () => {
+    const { openAiVoice, STT_PROMPT } = await import("@/lib/ai/voice");
+    const calls: Record<string, unknown>[] = [];
+    const fake = {
+      audio: {
+        transcriptions: { create: async (p: Record<string, unknown>) => { calls.push(p); return { text: " do doodh \n" }; } },
+        speech: { create: async (p: Record<string, unknown>) => { calls.push(p); return { arrayBuffer: async () => new TextEncoder().encode("mp3").buffer }; } },
+      },
+    } as unknown as import("openai").default;
+    const v = openAiVoice({}, fake);
+    expect(await v.transcribe(new Blob(["x"], { type: "audio/webm" }), "speech.webm")).toEqual({ transcript: "do doodh", languageCode: null });
+    expect(calls[0]).toMatchObject({ model: "gpt-4o-mini-transcribe", prompt: STT_PROMPT });
+    expect(await v.speak("ठीक है")).toEqual({ base64: Buffer.from("mp3").toString("base64"), mime: "audio/mpeg" });
+    expect(calls[1]).toMatchObject({ model: "gpt-4o-mini-tts", input: "ठीक है", response_format: "mp3" });
+  });
+});

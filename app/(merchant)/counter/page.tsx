@@ -4,7 +4,7 @@ import { getSql } from "@/lib/db/client";
 import { getMerchantId, listCatalogue, type CatalogueProduct } from "@/lib/bills";
 import { getPaymentMode } from "@/lib/payments/service";
 import { openAiConfigured } from "@/lib/ai/extract";
-import { sarvamConfigured } from "@/lib/ai/sarvam";
+import { voiceConfigured } from "@/lib/ai/voice";
 import { salesSummary } from "@/lib/insights";
 
 export default async function Page() {
@@ -22,7 +22,7 @@ export default async function Page() {
   const mode = getPaymentMode();
   const ai = {
     parchi: openAiConfigured(),
-    voice: sarvamConfigured(),
+    voice: voiceConfigured(),
     parchiLabel: openAiConfigured() ? `OpenAI ${process.env.OPENAI_MODEL!.trim()}` : null,
   };
   return <CounterScreen catalogue={catalogue} onlineMode={mode === "misconfigured" ? "live-off" : mode} ai={ai} today={today && { totalPaise: today.totalPaise, bills: today.bills, source: today.source }} />;
