@@ -73,23 +73,15 @@ type Listener = (speakingText: string | null) => void;
 let current: HTMLAudioElement | null = null;
 let currentText: string | null = null;
 let request = 0;
-const audioCache = new Map<string, Promise<string>>(); // text → data URL (shared while loading)
+/** Streaming speech URL. The same text gives the same URL, so repeats come from cache. */
+export const ttsUrl = (text: string) => `/api/tts?text=${encodeURIComponent(text)}`;
+const warmed = new Set<string>();
 
-/** Server audio for a text, fetched once and shared by every tap. Rejects when no server voice. */
-function serverAudio(text: string): Promise<string> {
-  let p = audioCache.get(text);
-  if (!p) {
-    p = fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("tts unavailable");
-        const { base64, mime } = await res.json();
-        return `data:${mime};base64,${base64}`;
-      });
-    p.catch(() => audioCache.delete(text)); // retry next time
-    if (audioCache.size > 30) audioCache.clear();
-    audioCache.set(text, p);
-  }
-  return p;
+/** Start generating a phrase's audio in the background so a later tap plays at once. */
+export function warmSpeech(text: string) {
+  if (!text || warmed.has(text)) return;
+  warmed.add(text);
+  fetch(ttsUrl(text)).then((r) => r.arrayBuffer()).catch(() => warmed.delete(text));
 }
 const listeners = new Set<Listener>();
 const emit = () => listeners.forEach((l) => l(currentText));
@@ -97,7 +89,7 @@ const emit = () => listeners.forEach((l) => l(currentText));
 /** Stop any app speech (server audio or device voice). */
 export function stopSpeaking() {
   request++; // cancels a fetch still in flight
-  current?.pause();
+  if (current) { current.pause(); current.removeAttribute("src"); current.load(); } // also cancels the download
   current = null;
   try { window.speechSynthesis.cancel(); } catch { /* not supported */ }
   if (currentText !== null) { currentText = null; emit(); }
@@ -126,18 +118,18 @@ export async function speakHindi(text: string): Promise<void> {
   currentText = text;
   emit();
   const done = () => { if (request === mine) { current = null; currentText = null; emit(); } };
-  try {
-    const url = await serverAudio(text);
-    if (request !== mine) return; // another tap or answer took over while loading
-    const audio = new Audio(url);
+  // Stream from our server (OpenAI or Sarvam): playback starts on the first bytes.
+  const played = await new Promise<boolean>((resolve) => {
+    const audio = new Audio(ttsUrl(text));
     current = audio;
+    let started = false;
+    audio.onplaying = () => { started = true; resolve(true); };
     audio.onended = done;
-    audio.onerror = done;
-    await audio.play();
-    return;
-  } catch {
-    if (request !== mine) return;
-  }
+    audio.onerror = () => { if (started) done(); else resolve(false); };
+    audio.play().catch(() => { if (!started) resolve(false); });
+  });
+  if (played || request !== mine) return;
+  current = null;
   try {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "hi-IN";

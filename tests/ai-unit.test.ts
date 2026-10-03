@@ -120,3 +120,12 @@ describe("voice provider choice", () => {
     expect(calls[1]).toMatchObject({ model: "gpt-4o-mini-tts", input: "ठीक है", response_format: "mp3" });
   });
 });
+
+describe("prepareSpeech", () => {
+  it("makes digits easy to say without changing them", async () => {
+    const { prepareSpeech } = await import("@/lib/ai/voice");
+    expect(prepareSpeech("आज ₹2,205 का सेल, 15% कम")).toBe("आज 2205 रुपये का सेल, 15 प्रतिशत कम");
+    expect(prepareSpeech("Rs. 1,20,000 बाकी")).toBe("120000 रुपये बाकी");
+    expect(prepareSpeech("Toned milk 500ml   शाम 4:58")).toBe("Toned milk 500 ml शाम 4:58");
+  });
+});

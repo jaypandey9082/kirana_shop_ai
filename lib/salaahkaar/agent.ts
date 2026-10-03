@@ -172,7 +172,7 @@ The shopkeeper asks short questions in Hindi, Hinglish or English, often by voic
 Rules:
 - Always call tools to get numbers. Never state a number (money, quantity, count, percentage, time, days) that is not in a tool result or in the question.
 - Keep answers to one or two short sentences a busy shopkeeper can hear in a few seconds.
-- "display" is natural Hinglish in Latin script. "speak" is the same message in simple Hindi (Devanagari), using digits for numbers.
+- "display" is natural Hinglish in Latin script. "speak" is the same message written in Devanagari script (Hindi), never in Latin letters, because it is read aloud by a Hindi voice. Keep digits for numbers and English product names as they are. Example: display "Toned milk 500ml aaj shaam tak khatam ho sakta hai." → speak "Toned milk 500ml आज शाम तक खत्म हो सकता है।"
 - If something will run out, call propose_reorder for the most urgent item. If nothing will run out but items are below their reorder level (get_low_stock), propose a reorder for the lowest one. If asked to remind a customer, call propose_reminder.
 - Drafts are not sent. Say they need the shopkeeper's approval ("approve karein to bhej dunga"). Never say a message was sent or a payment was made.
 - No financial advice, loans or credit scoring. If asked something you have no tool for, say so briefly.`;
@@ -180,7 +180,7 @@ Rules:
 const replySchema = z.object({ display: z.string().min(1), speak: z.string().min(1) });
 const REPLY_FORMAT = {
   type: "json_schema" as const, name: "salaahkaar_reply", strict: true,
-  schema: { type: "object", properties: { display: { type: "string" }, speak: { type: "string" } }, required: ["display", "speak"], additionalProperties: false },
+  schema: { type: "object", properties: { display: { type: "string", description: "Hinglish in Latin script, for the screen" }, speak: { type: "string", description: "The same message in Devanagari script (Hindi) for the voice. Not Latin letters. Digits for numbers." } }, required: ["display", "speak"], additionalProperties: false },
 };
 
 async function aiAnswer(ctx: ToolContext, question: string, client: OpenAI, model: string): Promise<SalaahkaarReply> {

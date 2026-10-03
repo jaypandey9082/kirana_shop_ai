@@ -6,7 +6,7 @@ import { Button, ErrorBanner, Sheet } from "@/components/ui/primitives";
 import { MoneyText, PaidToast, PaymentStatus, StockDelta, type PaymentState } from "./components";
 import { formatMoney } from "@/lib/format-money";
 import type { BillView } from "@/lib/bills";
-import { speakHindi } from "./voice";
+import { speakHindi, warmSpeech } from "./voice";
 
 export type OnlineMode = "staging" | "mock" | "live-off";
 interface Delta { productId: string; name: string; before: number; after: number; reorderLevel: number }
@@ -27,7 +27,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 const timeNow = () => new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date());
 
 /** Software voice confirmation of a verified amount (not Soundbox hardware). */
-const announce = (paise: number) => speakHindi(`${Math.round(paise / 100)} रुपये प्राप्त हुए`);
+const announceText = (paise: number) => `${Math.round(paise / 100)} रुपये प्राप्त हुए`;
+const announce = (paise: number) => speakHindi(announceText(paise));
 
 export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill: BillView; onlineMode: OnlineMode; onNewBill: () => void; onSettled?: (label: string) => void }) {
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
@@ -36,6 +37,8 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"cash" | "udhaar" | null>(null);
   const [pending, start] = useTransition();
+  // Have the "₹N prapt hue" voice ready before the payment lands.
+  useEffect(() => { warmSpeech(announceText(bill.totalPaise)); }, [bill.totalPaise]);
 
   const run = (fn: () => Promise<void>) => start(async () => {
     setError(null);

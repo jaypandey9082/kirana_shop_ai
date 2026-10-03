@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Mic, Square, Volume2 } from "lucide-react";
 import { ErrorBanner } from "@/components/ui/primitives";
 import { ActionCard, ChatBubble, InsightCard, VoiceComposer, type ActionState } from "./components";
-import { speakHindi, toggleSpeak, useSpeaking, useVoiceInput } from "./voice";
+import { speakHindi, toggleSpeak, useSpeaking, useVoiceInput, warmSpeech } from "./voice";
 import { suggestions } from "@/lib/ui-fixtures";
 import { classifyApproval } from "@/lib/salaahkaar/intent";
 import type { ActionView, InsightCardData } from "@/lib/salaahkaar/tools";
@@ -108,6 +108,7 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
       reply.actions.forEach(put);
       setTurns((t) => t.map((x) => (x.id === id ? { ...x, reply } : x)));
       if (viaVoice) void speakHindi(reply.speak);
+      else warmSpeech(reply.speak); // ready before the speaker button is tapped
     } catch (e) {
       setTurns((t) => t.map((x) => (x.id === id ? { ...x, error: e instanceof Error ? e.message : "Jawab nahi mila." } : x)));
     } finally {
