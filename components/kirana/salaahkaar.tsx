@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { LoaderCircle, Mic, Volume2 } from "lucide-react";
+import { LoaderCircle, Mic, Square, Volume2 } from "lucide-react";
 import { ErrorBanner } from "@/components/ui/primitives";
 import { ActionCard, ChatBubble, InsightCard, VoiceComposer, type ActionState } from "./components";
-import { speakHindi, useVoiceInput } from "./voice";
+import { speakHindi, toggleSpeak, useSpeaking, useVoiceInput } from "./voice";
 import { suggestions } from "@/lib/ui-fixtures";
 import { classifyApproval } from "@/lib/salaahkaar/intent";
 import type { ActionView, InsightCardData } from "@/lib/salaahkaar/tools";
@@ -163,7 +163,7 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
                     <p className="text-[16px] leading-7">{t.reply.display}</p>
                     <div className="mt-3 flex items-center justify-between gap-2">
                       <span className={`badge ${t.reply.mode === "ai" ? "tone-info" : "tone-warning"}`}>{MODE_LABEL[t.reply.mode]}</span>
-                      <button type="button" className="icon-btn -my-2 -mr-2 text-blue-600" aria-label="Jawab suniye" onClick={() => speakHindi(t.reply!.speak)}><Volume2 aria-hidden="true" /></button>
+                      <SpeakButton text={t.reply.speak} />
                     </div>
                   </div>
                 </div>
@@ -194,6 +194,17 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
         {voice.error && <p className="caption mt-1 px-1 text-danger">{voice.error}</p>}
       </form>
     </div>
+  );
+}
+
+/** Play the answer aloud; while it plays, the same button stops it. */
+function SpeakButton({ text }: { text: string }) {
+  const playing = useSpeaking() === text;
+  return (
+    <button type="button" className={`icon-btn -my-2 -mr-2 ${playing ? "bg-sky-100 text-blue-700" : "text-blue-600"}`}
+      aria-label={playing ? "Rokiye" : "Jawab suniye"} aria-pressed={playing} onClick={() => void toggleSpeak(text)}>
+      {playing ? <Square className="!h-4 !w-4 fill-current" aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
+    </button>
   );
 }
 
