@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { allowedNumbers, classifyApproval, numbersAreGrounded, numbersIn } from "@/lib/salaahkaar/agent";
-import { TOOLS } from "@/lib/salaahkaar/tools";
+import { TOOLS, dayTime } from "@/lib/salaahkaar/tools";
 
 describe("number guard", () => {
   it("reads Latin and Devanagari digits, with Indian commas", () => {
@@ -29,5 +29,16 @@ describe("tool contracts", () => {
       expect(Object.keys(t.parameters.properties).sort()).toEqual([...t.parameters.required].sort());
       expect(t.name).not.toMatch(/pay|send|transfer|refund|execute/);
     }
+  });
+});
+
+describe("dayTime", () => {
+  // 3 Oct 2026, 12:10 IST
+  const now = new Date("2026-10-03T06:40:00Z");
+  it("says aaj for later today and kal for tomorrow, in IST", () => {
+    expect(dayTime("2026-10-03T11:28:00Z", now)).toMatch(/^aaj 4:58\s?pm$/i);
+    expect(dayTime("2026-10-04T01:30:00Z", now)).toMatch(/^kal 7:00\s?am$/i);
+    // late evening IST is still the same IST day
+    expect(dayTime("2026-10-03T18:15:00Z", now)).toMatch(/^aaj 11:45\s?pm$/i);
   });
 });

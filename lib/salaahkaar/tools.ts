@@ -10,6 +10,7 @@ import { forecastRunout, khataDues, lowStock, overdueDues, salesSummary, slowMov
 import { normalize } from "@/lib/matcher";
 import { supplierFor } from "@/lib/demo/suppliers";
 import { logEvent } from "@/lib/events";
+import { istStartOfDay } from "@/lib/time";
 
 export interface InsightCardData { kind: "insight"; headline: string; facts: string[]; source: string }
 export interface ActionView {
@@ -22,6 +23,12 @@ export interface ToolResult { data: unknown; cards: InsightCardData[]; action?: 
 export interface ToolContext { sql: Sql; merchantId: string; now: Date; shopName: string }
 
 const time = (iso: string) => new Intl.DateTimeFormat("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).format(new Date(iso));
+/** "aaj 4:58 pm" / "kal 7:00 am": the day is spelled out so the model never has to guess it. */
+export function dayTime(iso: string, now: Date) {
+  const days = Math.round((istStartOfDay(new Date(iso)).getTime() - istStartOfDay(now).getTime()) / 86_400_000);
+  const day = days === 0 ? "aaj" : days === 1 ? "kal" : days === -1 ? "kal (beeta hua)" : `${days} din baad`;
+  return `${day} ${time(iso)}`;
+}
 const pct = (n: number | null) => (n === null ? "pichhle hafte ka data nahi" : n === 0 ? "pichhle hafte jitna" : `pichhle hafte se ${Math.abs(n)}% ${n > 0 ? "zyada" : "kam"}`);
 
 export async function actionView(sql: Sql, id: string): Promise<ActionView> {
@@ -85,11 +92,11 @@ export const TOOLS: ToolSpec[] = [
       const r = await forecastRunout(ctx.sql, ctx.merchantId, ctx.now, sku);
       const top = r.items.filter((i) => i.atRisk);
       return {
-        data: { items: r.items.map((i) => ({ ...i, runsOutAtLocal: i.runsOutAt ? time(i.runsOutAt) : null, nextRestockLocal: time(i.nextRestockAt) })), source: r.source },
+        data: { items: r.items.map((i) => ({ ...i, runsOutAtLocal: i.runsOutAt ? dayTime(i.runsOutAt, ctx.now) : null, nextRestockLocal: dayTime(i.nextRestockAt, ctx.now) })), source: r.source },
         cards: top.length ? top.slice(0, 3).map((i) => ({
           kind: "insight" as const,
-          headline: `${i.name}: ${i.stock} bache, ${i.runsOutAt ? `lagbhag ${time(i.runsOutAt)} tak khatam` : "kal subah se pehle khatam"}`,
-          facts: [`Restock (${time(i.nextRestockAt)}) tak aam taur par ${Math.round(i.expectedUntilRestock)} bikte hain`, `Shaam 5–10 baje roz ~${Math.round(i.typicalEvening)} bikte hain`],
+          headline: `${i.name}: ${i.stock} bache, ${i.runsOutAt ? `lagbhag ${dayTime(i.runsOutAt, ctx.now)} tak khatam` : "kal subah se pehle khatam"}`,
+          facts: [`Restock (${dayTime(i.nextRestockAt, ctx.now)}) tak aam taur par ${Math.round(i.expectedUntilRestock)} bikte hain`, `Shaam 5–10 baje roz ~${Math.round(i.typicalEvening)} bikte hain`],
           source: i.source,
         })) : [{ kind: "insight", headline: "Kal subah tak koi item khatam hone ka khatra nahi", facts: [], source: r.source }],
       };
