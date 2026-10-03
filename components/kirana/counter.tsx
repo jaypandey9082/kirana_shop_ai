@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, ChevronDown, FileText, Mic, Plus, ScanBarcode, Search, TrendingUp } from "lucide-react";
+import { CheckCircle2, ChevronDown, FileText, Mic, NotebookPen, PackageOpen, Plus, ScanBarcode, Search, TrendingUp } from "lucide-react";
 import { ErrorBanner, ScreenHead } from "@/components/ui/primitives";
 import { BillLine, BillSummary, InputModeTabs, MoneyText, type InputMode } from "./components";
 import { matchProduct, normalize } from "@/lib/matcher";
@@ -9,13 +10,19 @@ import { formatMoney } from "@/lib/format-money";
 import type { BillView, CatalogueProduct } from "@/lib/bills";
 import { PaymentPanel, type OnlineMode } from "./payment";
 import { ParchiPanel, VoicePanel, type AiCapabilities, type LinesResult } from "./inputs";
+import { ProductIcon } from "./product-icon";
 
 const STORAGE_KEY = "kirana.counter.billId";
 /** Everyday items shown as one-tap chips before the merchant searches. */
 const QUICK_SKUS = ["DAI-001", "DAI-006", "DAI-008", "STP-007", "SNK-005", "SNK-007", "BEV-002", "HOM-001"];
 const BARCODE = /^\d{8,14}$/;
 
-export interface TodayGlance { totalPaise: number; bills: number; source: string }
+export interface DayGlance {
+  sales: { totalPaise: number; bills: number; changePct: number | null };
+  low: { count: number; top: { name: string; stock: number } | null };
+  udhaar: { totalPaise: number; overduePaise: number };
+  source: string;
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { "Content-Type": "application/json", ...init?.headers } });
@@ -30,7 +37,7 @@ function stockLabel(p: CatalogueProduct) {
   return { text: `${p.stock} stock`, tone: "tone-neutral" };
 }
 
-export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue: CatalogueProduct[]; onlineMode: OnlineMode; ai: AiCapabilities; today: TodayGlance | null }) {
+export function CounterScreen({ catalogue, onlineMode, ai, glance }: { catalogue: CatalogueProduct[]; onlineMode: OnlineMode; ai: AiCapabilities; glance: DayGlance | null }) {
   const [mode, setMode] = useState<InputMode>("Parchi");
   const [query, setQuery] = useState("");
   const [bill, setBill] = useState<BillView | null>(null);
@@ -137,19 +144,7 @@ export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue:
         {bill && <span className="badge tone-neutral shrink-0 tabular-nums">Bill #{bill.number}</span>}
       </ScreenHead>
 
-      {!lines.length && today && (
-        <div className="mb-4 flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-success-tint text-success"><TrendingUp className="!h-[18px] !w-[18px]" aria-hidden="true" /></span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm text-muted">Aaj ki bikri</p>
-            <p className="caption truncate text-muted" title={today.source}>Source: bill register</p>
-          </div>
-          <div className="text-right">
-            <p className="text-lg font-bold leading-6 text-navy-950 tabular-nums">{formatMoney(today.totalPaise)}</p>
-            <p className="caption text-muted tabular-nums">{today.bills} bills</p>
-          </div>
-        </div>
-      )}
+      {!lines.length && glance && <Glance g={glance} />}
 
       <InputModeTabs value={mode} onChange={setMode} icons={{ Parchi: <FileText aria-hidden="true" />, Bolkar: <Mic aria-hidden="true" />, Items: <Search aria-hidden="true" /> }} />
 
@@ -178,6 +173,7 @@ export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue:
                     return (
                       <li key={p.id}>
                         <button type="button" disabled={pending} onClick={() => addProduct(p.id)} className="flex min-h-14 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-canvas">
+                          <ProductIcon name={p.name} category={p.category} />
                           <div className="min-w-0 flex-1">
                             <p className="font-medium leading-6">{p.name}</p>
                             <p className="mt-0.5 flex items-center gap-2"><MoneyText paise={p.pricePaise} size="sm" /><span className={`badge ${s.tone}`}>{s.text}</span></p>
@@ -232,6 +228,43 @@ export function CounterScreen({ catalogue, onlineMode, ai, today }: { catalogue:
         </section>
       )}
     </>
+  );
+}
+
+/** Today at a glance. Every number comes from the database; tap a tile to dig in. */
+function Glance({ g }: { g: DayGlance }) {
+  const ask = (q: string) => `/salaahkaar?ask=${encodeURIComponent(q)}`;
+  const down = g.sales.changePct !== null && g.sales.changePct < 0;
+  const tiles = [
+    {
+      href: ask("Aaj kitna sale hua?"), label: "Aaj ki bikri", value: formatMoney(g.sales.totalPaise), Icon: TrendingUp, tint: "bg-success-tint text-success",
+      sub: g.sales.changePct === null ? `${g.sales.bills} bills` : <span className={down ? "text-danger" : "text-success"}>{down ? "↓" : "↑"} {Math.abs(g.sales.changePct)}% hafte se</span>,
+    },
+    {
+      href: ask("Kya khatam hone wala hai?"), label: "Kam stock", value: `${g.low.count} items`, Icon: PackageOpen, tint: g.low.count ? "bg-warning-tint text-warning" : "bg-canvas text-muted",
+      sub: g.low.top ? `${g.low.top.name.split(" ").slice(0, 2).join(" ")} · ${g.low.top.stock}` : "Sab theek",
+    },
+    {
+      href: "/khata", label: "Udhaar", value: formatMoney(g.udhaar.totalPaise), Icon: NotebookPen, tint: g.udhaar.overduePaise ? "bg-danger-tint text-danger" : "bg-sky-100 text-blue-700",
+      sub: g.udhaar.overduePaise ? <span className="text-danger">{formatMoney(g.udhaar.overduePaise)} 30+ din</span> : "Sab naya",
+    },
+  ];
+  return (
+    <section aria-label="Aaj ka haal" className="mb-5">
+      <div className="grid grid-cols-3 gap-2">
+        {tiles.map((t) => (
+          <Link key={t.label} href={t.href} className="card flex flex-col gap-2 p-3 transition-colors hover:border-line-strong">
+            <span className={`grid h-8 w-8 place-items-center rounded-lg ${t.tint}`}><t.Icon className="!h-4 !w-4" aria-hidden="true" /></span>
+            <span>
+              <span className="caption block text-muted">{t.label}</span>
+              <span className="block text-[17px] font-bold leading-6 tracking-tight text-navy-950 tabular-nums">{t.value}</span>
+              <span className="mt-0.5 block truncate text-[11px] font-medium leading-4 text-muted tabular-nums">{t.sub}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+      <p className="caption mt-2 px-1 text-muted">Source: {g.source}</p>
+    </section>
   );
 }
 

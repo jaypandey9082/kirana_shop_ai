@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Activity, Mic, NotebookPen, ReceiptText, ShoppingBag } from "lucide-react";
 import { Sheet } from "@/components/ui/primitives";
 import type { ShellFixture } from "@/lib/ui-fixtures";
@@ -26,6 +26,7 @@ export function MerchantShell({ children, fixture, date }: { children: ReactNode
   const path = usePathname();
   const [showModes, setShowModes] = useState(false);
   const pay = modes[fixture.paymentMode];
+  const toPrepare = useOrdersToPrepare();
   return (
     <div className="merchant-shell">
       <a href="#main-content" className="skip-link">Skip to content</a>
@@ -50,7 +51,13 @@ export function MerchantShell({ children, fixture, date }: { children: ReactNode
       <nav aria-label="Merchant navigation" className="bottom-nav">
         {tabs.map(({ href, label, Icon, ai }) => (
           <Link key={href} href={href} aria-current={path === href ? "page" : undefined} className="nav-link">
-            <span className={`nav-icon ${ai ? "nav-icon-ai" : ""}`}><Icon aria-hidden="true" /></span>{label}
+            <span className={`nav-icon relative ${ai ? "nav-icon-ai" : ""}`}>
+              <Icon aria-hidden="true" />
+              {href === "/orders" && toPrepare > 0 && (
+                <span className="pop-in absolute -top-1 right-2 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-danger px-1 text-[11px] font-bold leading-none text-surface ring-2 ring-surface tabular-nums">{toPrepare}</span>
+              )}
+            </span>
+            {label}{href === "/orders" && toPrepare > 0 && <span className="sr-only">, {toPrepare} naye order</span>}
           </Link>
         ))}
       </nav>
@@ -64,4 +71,28 @@ export function MerchantShell({ children, fixture, date }: { children: ReactNode
       </Sheet>
     </div>
   );
+}
+
+/** Paid online orders not yet completed: the Orders tab badge. Checks on open, every 8 s while visible, and on return. */
+function useOrdersToPrepare() {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const check = async () => {
+      try {
+        const { orders } = await fetch("/api/orders").then((r) => r.json());
+        if (!stop) setCount((orders ?? []).filter((o: { status: string; fulfilment: string | null }) => o.status === "PAID" && o.fulfilment !== "COMPLETED").length);
+      } catch { /* keep the last count */ }
+    };
+    const loop = async () => {
+      if (document.visibilityState === "visible") await check();
+      if (!stop) timer = setTimeout(loop, 8000);
+    };
+    const onShow = () => { if (document.visibilityState === "visible") void check(); };
+    void check().then(() => { if (!stop) timer = setTimeout(loop, 8000); });
+    document.addEventListener("visibilitychange", onShow);
+    return () => { stop = true; clearTimeout(timer); document.removeEventListener("visibilitychange", onShow); };
+  }, []);
+  return count;
 }

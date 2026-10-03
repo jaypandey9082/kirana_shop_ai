@@ -5,6 +5,7 @@ import { Bike, Carrot, ChevronRight, CupSoda, Droplet, LoaderCircle, Milk, Minus
 import { Button, ErrorBanner, Sheet } from "@/components/ui/primitives";
 import { MoneyText } from "@/components/kirana/components";
 import { matchProduct } from "@/lib/matcher";
+import { productVisual } from "@/components/kirana/product-icon";
 import type { StoreInfo, StoreProduct } from "@/lib/orders";
 
 const ICONS: Record<string, { Icon: LucideIcon; tint: string }> = {
@@ -83,7 +84,7 @@ export function Storefront({ store, products, paymentLabel }: { store: StoreInfo
           <div className="chip-row" role="group" aria-label="Categories">
             {categories.map((c) => {
               const { Icon } = ICONS[c] ?? ICONS["Dairy & bakery"];
-              return <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(c)} className="chip"><Icon aria-hidden="true" />{c}</button>;
+              return <button key={c} type="button" aria-pressed={category === c} onClick={(e) => { setCategory(c); e.currentTarget.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" }); }} className="chip"><Icon aria-hidden="true" />{c}</button>;
             })}
           </div>
         )}
@@ -94,7 +95,7 @@ export function Storefront({ store, products, paymentLabel }: { store: StoreInfo
         {shown.map((p) => {
           const qty = cart[p.id] ?? 0;
           const out = p.stock === 0;
-          const { Icon, tint } = ICONS[p.category] ?? ICONS["Dairy & bakery"];
+          const { Icon, tint } = productVisual(p.name, p.category);
           return (
             <li key={p.id} className={`flex flex-col rounded-2xl border border-line bg-surface p-2.5 shadow-card ${out ? "opacity-60" : ""}`}>
               <div className={`relative grid aspect-[16/9] place-items-center rounded-xl ${tint}`}>

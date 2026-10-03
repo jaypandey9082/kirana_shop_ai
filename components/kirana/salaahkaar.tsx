@@ -118,6 +118,21 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
 
   const voice = useVoiceInput((transcript) => { if (transcript) void ask(transcript, true); });
 
+  // Opened from a Counter tile (/salaahkaar?ask=…): ask that question once.
+  const askedFromLink = useRef(false);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("ask");
+    if (!q) return;
+    const t = setTimeout(() => {
+      if (askedFromLink.current) return;
+      askedFromLink.current = true;
+      window.history.replaceState(null, "", window.location.pathname);
+      void ask(q);
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on arrival
+  }, []);
+
   const empty = turns.length === 0;
   return (
     <div className="pb-32">
@@ -138,6 +153,12 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
       </section>
 
       {empty && nudges === null && <div className="mt-5 space-y-3"><div className="skeleton h-4 w-32" /><div className="skeleton h-28" /></div>}
+      {empty && nudges && nudges.length === 0 && (
+        <section className="card mt-5" aria-label="Salaahkaar se poochiye">
+          <h2 className="text-[17px]">Namaste! Dukaan ke baare mein kuch bhi poochiye.</h2>
+          <p className="secondary mt-1">Har jawab aapke bills, stock aur Khata se aata hai, source ke saath. Koi message aapki approval ke bina nahi jaata.</p>
+        </section>
+      )}
       {empty && nudges && nudges.length > 0 && (
         <section className="mt-5 space-y-3" aria-label="Abhi dhyan dein">
           <p className="section-label">Abhi dhyan dein</p>
@@ -161,7 +182,7 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
                 <div className="fade-up flex items-start gap-3">
                   <Avatar />
                   <div className="card min-w-0 flex-1 rounded-tl-md">
-                    <p className="text-[16px] leading-7">{t.reply.display}</p>
+                    <p className="text-[16px] leading-7"><Emphasis text={t.reply.display} /></p>
                     <div className="mt-3 flex items-center justify-between gap-2">
                       <span className={`badge ${t.reply.mode === "ai" ? "tone-info" : "tone-warning"}`}>{MODE_LABEL[t.reply.mode]}</span>
                       <SpeakButton text={t.reply.speak} />
@@ -207,6 +228,12 @@ function SpeakButton({ text }: { text: string }) {
       {playing ? <Square className="!h-4 !w-4 fill-current" aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
     </button>
   );
+}
+
+/** Bold the figures (₹ amounts, %, times, counts) so the answer can be read at a glance. */
+function Emphasis({ text }: { text: string }) {
+  const parts = text.split(/(₹\s?[\d,]+(?:\.\d+)?|(?<![A-Za-z\d])\d+(?:[.:]\d+)?(?:%|\s?(?:am|pm|bills?|items?|din|bache|customers?|grahak|units?)\b)?(?![A-Za-z\d]))/gi);
+  return <>{parts.map((p, i) => (i % 2 ? <strong key={i} className="font-semibold text-navy-950 tabular-nums">{p}</strong> : p))}</>;
 }
 
 function Avatar() {
