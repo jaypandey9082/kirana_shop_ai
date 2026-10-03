@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { AlertTriangle, ArrowRight, BellRing, Check, CheckCircle2, ChevronRight, Database, LoaderCircle, Mic, Minus, Plus, Send, ShieldCheck, Trash2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/primitives";
 import { formatMoney } from "@/lib/format-money";
@@ -52,7 +52,7 @@ export function BillLine({ line, onQuantity, onChoose, onRemove, busy = false }:
           <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-surface text-warning"><AlertTriangle className="!h-[18px] !w-[18px]" aria-hidden="true" /></span>
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-navy-950">“{line.raw ?? line.name}” — kaunsa?</p>
-            <p className="caption mt-0.5 text-warning">Pakka nahi hai. Sahi product chuniye, phir bill confirm hoga.</p>
+            <p className="caption mt-0.5 text-warning">Sahi product chuniye</p>
           </div>
         </div>
         <div className="mt-3 grid gap-2">
@@ -201,7 +201,7 @@ export function ActionCard({ title, draft, state, onApprove, onReject, timestamp
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-sky-100 text-blue-600"><Icon aria-hidden="true" /></span>
         <div className="min-w-0 flex-1">
           <h3 className="leading-6">{title}</h3>
-          {state === "pending" ? <span className="badge tone-warning mt-1">Approval chahiye · abhi kuch nahi bheja</span> : state === "done" ? <span className="badge tone-success mt-1"><CheckCircle2 aria-hidden="true" />Done</span> : <span className="badge tone-info mt-1">Approved</span>}
+          {state === "pending" ? <span className="badge tone-warning mt-1">Approval chahiye</span> : state === "done" ? <span className="badge tone-success mt-1"><CheckCircle2 aria-hidden="true" />Done</span> : <span className="badge tone-info mt-1">Approved</span>}
         </div>
       </div>
       <blockquote className="mt-3 rounded-xl bg-canvas p-3 text-sm leading-6 text-ink">“{draft}”</blockquote>
@@ -221,7 +221,7 @@ export function ActionCard({ title, draft, state, onApprove, onReject, timestamp
         </ol>
       )}
       {error && <p className="mt-3 rounded-lg bg-danger-tint p-2 text-sm text-danger">{error}</p>}
-      {state === "done" && via !== "n8n" && <p className="caption mt-3 text-muted">Outbox mein ready hai, aap khud bhejiye. WhatsApp par auto-send nahi hota.</p>}
+      {state === "done" && via !== "n8n" && <p className="caption mt-3 text-muted">Outbox mein ready · WhatsApp auto-send nahi</p>}
     </div>
   );
 }
@@ -280,13 +280,22 @@ export function KhataRow({ name, ageing, balance, days }: { name: string; ageing
     </div>
   );
 }
+/** Two lines by default; tap to read the whole entry. */
+function ClampText({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+      className={`block w-full pt-1 text-left text-[15px] leading-6 text-ink ${open ? "" : "line-clamp-2"}`}>{text}</button>
+  );
+}
+
 export function EventLogItem({ name, summary, timestamp, verified, tone = "neutral", icon }: { name: string; summary: string; timestamp: string | null; verified: boolean; tone?: "neutral" | "success" | "info" | "warning"; icon?: React.ReactNode }) {
   const dot = { neutral: "bg-canvas text-muted", success: "bg-success-tint text-success", info: "bg-sky-100 text-blue-600", warning: "bg-warning-tint text-warning" }[tone];
   return (
     <div className="relative flex gap-3 py-3 pl-1 pr-1">
       <span className={`relative z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full ${dot}`}>{icon ?? <span className="h-2 w-2 rounded-full bg-current" />}</span>
       <div className="min-w-0 flex-1">
-        <p className="pt-1 text-[15px] leading-6 text-ink">{summary}</p>
+        <ClampText text={summary} />
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <span className="caption text-muted tabular-nums">{timestamp ?? "—"}</span>
           <code className="rounded bg-canvas px-1.5 py-0.5 text-[11px] text-muted">{name}</code>

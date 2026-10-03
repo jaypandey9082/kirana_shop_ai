@@ -159,7 +159,6 @@ export function Storefront({ store, products, paymentLabel }: { store: StoreInfo
           <Button type="submit" className="w-full" disabled={busy || name.trim().length < 2}>
             {busy ? <LoaderCircle className="spin" aria-hidden="true" /> : null}Pay <MoneyText paise={total} size="sm" /> · {paymentLabel}
           </Button>
-          <p className="caption text-center text-muted">Daam dukaan ke catalogue se. Payment ke baad order track kar sakte hain.</p>
         </form>
       </Sheet>
     </main>

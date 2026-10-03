@@ -155,8 +155,8 @@ export function SalaahkaarScreen({ aiMode, voiceEnabled }: { aiMode: "ai" | "off
       {empty && nudges === null && <div className="mt-5 space-y-3"><div className="skeleton h-4 w-32" /><div className="skeleton h-28" /></div>}
       {empty && nudges && nudges.length === 0 && (
         <section className="card mt-5" aria-label="Salaahkaar se poochiye">
-          <h2 className="text-[17px]">Namaste! Dukaan ke baare mein kuch bhi poochiye.</h2>
-          <p className="secondary mt-1">Har jawab aapke bills, stock aur Khata se aata hai, source ke saath. Koi message aapki approval ke bina nahi jaata.</p>
+          <h2 className="text-[17px]">Namaste! Kuch bhi poochiye.</h2>
+          <p className="secondary mt-1">Jawab aapke bills, stock aur Khata se, source ke saath.</p>
         </section>
       )}
       {empty && nudges && nudges.length > 0 && (

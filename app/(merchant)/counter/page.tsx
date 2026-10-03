@@ -23,7 +23,7 @@ export default async function Page() {
           sales: { totalPaise: sales.totalPaise, bills: sales.bills, changePct: sales.changePct },
           low: { count: low.items.length, top: urgent ? { name: urgent.name, stock: urgent.stock } : null },
           udhaar: { totalPaise: khata.totalPaise, overduePaise: khata.buckets["30+"] },
-          source: "bill register · stock register · Khata ledger",
+          source: "bills · stock · Khata",
         };
       })
       .catch(() => null);

@@ -104,7 +104,7 @@ export function CustomerPay({ checkout, mockEnabled }: { checkout: Checkout; moc
           <div className="py-4">
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-danger-tint text-danger"><XCircle className="!h-8 !w-8" aria-hidden="true" /></span>
             <h1 className="mt-4">Payment nahi hua</h1>
-            <p className="secondary mt-2">Is attempt mein koi paisa nahi kata. Dukaandaar se dobara try karne ko kahiye.</p>
+            <p className="secondary mt-2">Koi paisa nahi kata. Dobara try karein.</p>
           </div>
         ) : (
           <div className="py-2">

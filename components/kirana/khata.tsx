@@ -43,7 +43,7 @@ export function KhataScreen() {
   );
   return (
     <>
-      <ScreenHead title="Khata" subtitle="Udhaar ka saaf hisaab" />
+      <ScreenHead title="Khata" />
       {error && <div className="mb-4"><ErrorBanner message={error} onRetry={load} /></div>}
       <section className="hero mb-5">
         <p className="text-sm text-on-dark-muted">Total lena hai</p>
@@ -63,7 +63,7 @@ export function KhataScreen() {
                 </div>
               ))}
             </dl>
-            <p className="caption mt-4 border-t border-white/10 pt-3 text-on-dark-muted">{data.customers.length} customers · Source: {data.source}</p>
+            <p className="caption mt-4 border-t border-white/10 pt-3 text-on-dark-muted">{data.customers.length} customers · Source: {data.source.split(" · ")[0]}</p>
           </>
         )}
       </section>
@@ -150,7 +150,7 @@ function CustomerSheet({ id, onClose }: { id: string; onClose: () => void }) {
                   </div>
                   <Button type="submit" className="shrink-0 whitespace-nowrap" disabled={busy || !Number(amount)}>{busy ? <LoaderCircle className="spin" aria-hidden="true" /> : <HandCoins aria-hidden="true" />}Cash mila</Button>
                 </div>
-                <p className="caption mt-2 text-muted">Aapke dwara recorded · gateway verified nahi.</p>
+                <p className="caption mt-2 text-muted">Aapne record kiya · gateway verified nahi</p>
               </form>
               {!current && <Button variant="secondary" className="w-full" disabled={busy} onClick={remind}><BellRing aria-hidden="true" />Reminder draft banaiye</Button>}
               {current && (

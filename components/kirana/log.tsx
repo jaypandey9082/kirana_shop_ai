@@ -46,7 +46,7 @@ export function LiveLog() {
   const shown = (events ?? []).filter((e) => filter === "All" || groupOf(e.type) === filter);
   return (
     <>
-      <ScreenHead title="Live log" subtitle="Har business event, kram se. Verified = gateway se confirm.">
+      <ScreenHead title="Live log">
         <span className="badge tone-success shrink-0"><span className="pulse h-1.5 w-1.5 rounded-full bg-success-500" aria-hidden="true" />Live</span>
       </ScreenHead>
       <div role="group" aria-label="Event filters" className="chip-row mb-4">

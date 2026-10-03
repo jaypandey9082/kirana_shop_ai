@@ -109,14 +109,13 @@ export function ParchiPanel({ caps, ensureBill, onResult, compact = false }: { c
         )}
         <span>
           <span className={`block text-[17px] font-semibold ${caps.parchi ? "text-navy-950" : "text-muted"}`}>{busy === "live" ? "Parchi padh rahe hain…" : "Parchi ki photo lein"}</span>
-          <span className="secondary mt-1 block">{caps.parchi ? "AI padhega · catalogue se match · unsure items aap chunenge" : "Live reading is off on this server (no OpenAI key)."}</span>
+          <span className="secondary mt-1 block">{caps.parchi ? "AI padhega, aap check karenge" : "Live reading off (no OpenAI key)"}</span>
         </span>
       </button>
       <div className="mt-3 flex gap-2">
         {demoButton(!caps.parchi)}
         <a className="btn btn-quiet w-12 px-0" href="/demo-parchi" target="_blank" rel="noreferrer" aria-label="Open the demo parchi"><ExternalLink aria-hidden="true" /></a>
       </div>
-      <p className="caption mt-2 px-1 text-muted">Cached = demo parchi ki saved reading, log mein labelled.</p>
       {error && <div className="mt-3"><ErrorBanner message={error} /></div>}
     </div>
   );

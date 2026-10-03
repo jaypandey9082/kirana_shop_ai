@@ -67,12 +67,40 @@ export function useVoiceInput(onTranscript: (text: string) => void) {
 
 // ------------------------------------------------------------------ speech output
 // One voice at a time for the whole app: a new request stops whatever is playing,
-// a tap on the same text while it plays stops it, and fetched audio is reused.
+// a tap on the same text while it plays stops it, and repeats come from cache.
+//
+// Phones (iPhone especially) only allow sound that a tap started. Answers and the
+// "₹N prapt hue" confirmation arrive seconds after a tap, so the app keeps ONE audio
+// element, unlocks it on the first tap anywhere, and reuses it for all speech.
 
 type Listener = (speakingText: string | null) => void;
-let current: HTMLAudioElement | null = null;
+let player: HTMLAudioElement | null = null;
+let unlocked = false;
 let currentText: string | null = null;
 let request = 0;
+let settlePending: (() => void) | null = null;
+const listeners = new Set<Listener>();
+const emit = () => listeners.forEach((l) => l(currentText));
+/** 44-byte silent WAV, played once inside a tap to unlock the shared player. */
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+
+function getPlayer(): HTMLAudioElement {
+  if (!player) { player = new Audio(); player.preload = "auto"; }
+  return player;
+}
+
+/** Called on the first tap anywhere in the app (see below). Safe to call again. */
+export function unlockAudio() {
+  if (unlocked || currentText !== null) return;
+  const p = getPlayer();
+  p.src = SILENT;
+  p.play().then(() => { unlocked = true; }).catch(() => { /* try again on the next tap */ });
+}
+if (typeof document !== "undefined") {
+  const onTap = () => { unlockAudio(); if (unlocked) document.removeEventListener("pointerdown", onTap, true); };
+  document.addEventListener("pointerdown", onTap, true);
+}
+
 /** Streaming speech URL. The same text gives the same URL, so repeats come from cache. */
 export const ttsUrl = (text: string) => `/api/tts?text=${encodeURIComponent(text)}`;
 const warmed = new Set<string>();
@@ -83,14 +111,17 @@ export function warmSpeech(text: string) {
   warmed.add(text);
   fetch(ttsUrl(text)).then((r) => r.arrayBuffer()).catch(() => warmed.delete(text));
 }
-const listeners = new Set<Listener>();
-const emit = () => listeners.forEach((l) => l(currentText));
 
 /** Stop any app speech (server audio or device voice). */
 export function stopSpeaking() {
-  request++; // cancels a fetch still in flight
-  if (current) { current.pause(); current.removeAttribute("src"); current.load(); } // also cancels the download
-  current = null;
+  request++;
+  settlePending?.();
+  settlePending = null;
+  if (player) {
+    player.onplaying = player.onended = player.onerror = null;
+    player.pause();
+    if (player.getAttribute("src") && player.getAttribute("src") !== SILENT) { player.removeAttribute("src"); player.load(); } // cancels the download
+  }
   try { window.speechSynthesis.cancel(); } catch { /* not supported */ }
   if (currentText !== null) { currentText = null; emit(); }
 }
@@ -117,19 +148,20 @@ export async function speakHindi(text: string): Promise<void> {
   const mine = ++request;
   currentText = text;
   emit();
-  const done = () => { if (request === mine) { current = null; currentText = null; emit(); } };
+  const done = () => { if (request === mine) { currentText = null; emit(); } };
   // Stream from our server (OpenAI or Sarvam): playback starts on the first bytes.
   const played = await new Promise<boolean>((resolve) => {
-    const audio = new Audio(ttsUrl(text));
-    current = audio;
+    settlePending = () => resolve(false);
+    const audio = getPlayer();
     let started = false;
     audio.onplaying = () => { started = true; resolve(true); };
     audio.onended = done;
     audio.onerror = () => { if (started) done(); else resolve(false); };
+    audio.src = ttsUrl(text);
     audio.play().catch(() => { if (!started) resolve(false); });
   });
+  if (request === mine) settlePending = null;
   if (played || request !== mine) return;
-  current = null;
   try {
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "hi-IN";

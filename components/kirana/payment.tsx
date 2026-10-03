@@ -92,7 +92,7 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
             <PayOption icon={<Banknote aria-hidden="true" />} label="Cash" sub="Haath mein" disabled={pending} onClick={() => setSheet("cash")} />
             <PayOption icon={<BookUser aria-hidden="true" />} label="Udhaar" sub="Khata mein" disabled={pending} onClick={() => setSheet("udhaar")} />
           </div>
-          {onlineMode === "mock" && <p className="caption mt-3 rounded-xl bg-warning-tint p-3 text-warning">Mock payment · not a real Paytm transaction. Server verification still runs.</p>}
+          {onlineMode === "mock" && <p className="caption mt-3 rounded-xl bg-warning-tint p-3 text-warning">Mock payment · not a real Paytm transaction</p>}
           {onlineOff && <p className="caption mt-3 text-muted">Paytm credentials are not set. Cash and udhaar still work.</p>}
         </div>
       ) : (
@@ -104,7 +104,7 @@ export function PaymentPanel({ bill, onlineMode, onNewBill, onSettled }: { bill:
         <div className="rounded-2xl bg-canvas p-4 text-center">
           <Banknote className="mx-auto !h-8 !w-8 text-success" aria-hidden="true" />
           <p className="mt-2 text-2xl font-bold text-navy-950 tabular-nums">{formatMoney(bill.totalPaise)}</p>
-          <p className="caption mt-1 text-muted">Aapke dwara recorded · gateway verified nahi. Stock abhi update hoga.</p>
+          <p className="caption mt-1 text-muted">Aapne record kiya · gateway verified nahi</p>
         </div>
         <Button className="mt-4 w-full" disabled={pending} onClick={() => run(async () => {
           const r = await api<{ stock: Delta[] }>(`/api/bills/${bill.id}/pay`, { method: "POST", body: JSON.stringify({ method: "cash" }) });
@@ -153,7 +153,7 @@ function OnlineWait({ payment, state, rejected, onRetry, busy }: { payment: Paym
           <div className="mx-auto mt-4 w-60 max-w-full rounded-2xl border border-line bg-surface p-3 shadow-card">
             {svg ? <div aria-label="Payment QR code for the customer" role="img" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="skeleton aspect-square w-full" />}
           </div>
-          <p className="secondary mt-3 text-center">Customer apne phone se scan kare</p>
+          <p className="secondary mt-3 text-center">Customer scan kare</p>
           <a className="btn btn-secondary mt-3 w-full" href={url || payment.payPath} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" />Customer view kholiye</a>
         </>
       )}
@@ -180,7 +180,7 @@ function UdhaarSheet({ open, onClose, total, onPick, busy }: { open: boolean; on
   const shown = (customers ?? []).filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()));
   return (
     <Sheet title={`Udhaar · ${formatMoney(total)}`} open={open} onClose={onClose}>
-      <p className="secondary mb-3">Kiske khate mein likhein? Stock abhi update hoga; bill settle hone tak unpaid rahega.</p>
+      <p className="secondary mb-3">Kiske khate mein likhein?</p>
       <div className="relative mb-2">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" aria-hidden="true" />
         <input className="field pl-11" placeholder="Customer ka naam" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search customers" />
@@ -211,7 +211,6 @@ function PaidView({ bill, done, onNewBill }: { bill: BillView; done: Done; onNew
           <span className="pop-in mx-auto grid h-14 w-14 place-items-center rounded-full bg-sky-100 text-blue-600"><BookUser aria-hidden="true" /></span>
           <p className="mt-3 text-xl font-bold text-navy-950">Udhaar mein likh diya</p>
           <p className="secondary mt-1">{done.customer} ka baaki ab <span className="font-semibold text-navy-950">{formatMoney(done.balancePaise)}</span></p>
-          <p className="caption mt-2 text-muted">Bill settle hone tak unpaid rahega</p>
         </div>
       ) : (
         <PaidToast amount={bill.totalPaise} time={done.at} kind={done.kind === "cash" ? "cash" : "verified"}

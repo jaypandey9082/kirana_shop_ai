@@ -72,7 +72,7 @@ export function OrdersScreen({ shopSlug, shopName }: { shopSlug: string; shopNam
 
   return (
     <>
-      <ScreenHead title="Orders" subtitle="QR storefront ke online orders">
+      <ScreenHead title="Orders">
         <Button variant="secondary" className="shrink-0" onClick={() => setQr(true)}><QrCode aria-hidden="true" />Shop QR</Button>
       </ScreenHead>
       {error && <div className="mb-4"><ErrorBanner message={error} /></div>}
@@ -153,7 +153,6 @@ function ShopQr({ open, onClose, slug, name }: { open: boolean; onClose: () => v
           {svg ? <div role="img" aria-label="QR code for the online store" dangerouslySetInnerHTML={{ __html: svg }} /> : <div className="skeleton aspect-square w-full" />}
         </div>
       </div>
-      <p className="secondary mt-3 text-center">Customer order aur payment khud kar sakte hain.</p>
       {url && <a className="btn btn-secondary mt-3 w-full" href={url} target="_blank" rel="noreferrer"><ExternalLink aria-hidden="true" />Storefront kholiye</a>}
     </Sheet>
   );

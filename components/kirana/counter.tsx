@@ -140,7 +140,7 @@ export function CounterScreen({ catalogue, onlineMode, ai, glance }: { catalogue
 
   return (
     <>
-      <ScreenHead title="Counter" subtitle={bill ? "Bill ban raha hai" : "Naya bill, aapke tareeke se"}>
+      <ScreenHead title="Counter">
         {bill && <span className="badge tone-neutral shrink-0 tabular-nums">Bill #{bill.number}</span>}
       </ScreenHead>
 
@@ -160,9 +160,7 @@ export function CounterScreen({ catalogue, onlineMode, ai, glance }: { catalogue
               </div>
               <button type="submit" className="btn btn-primary w-12 px-0" aria-label={isList ? "Add list" : "Add"} disabled={!trimmed || pending}><Plus aria-hidden="true" /></button>
             </div>
-            <p className="caption mt-2 text-muted">
-              {isBarcode ? "Barcode · Enter dabaiye" : isList ? "List: har item catalogue se match hoga. Jo pakka nahi, woh aap chunenge." : "Naam, poori list, ya scanner se barcode."}
-            </p>
+            {(isBarcode || isList) && <p className="caption mt-2 text-muted">{isBarcode ? "Barcode · Enter dabaiye" : "Poori list ek saath add hogi"}</p>}
 
             {(results.length > 0 || (!query && !lines.length)) && (
               <>
@@ -222,7 +220,6 @@ export function CounterScreen({ catalogue, onlineMode, ai, glance }: { catalogue
               </div>
             )}
           </div>
-          <p className="caption mt-2 text-muted">Daam catalogue se aate hain, AI se nahi. Stock confirm ke baad hi badlega.</p>
           <div className="h-28" aria-hidden="true" />
           <BillSummary sticky count={bill?.itemCount ?? 0} total={bill?.totalPaise ?? 0} disabledReason={disabledReason} onConfirm={confirm} busy={pending} />
         </section>
@@ -273,7 +270,7 @@ function Confirmed({ bill, onNew, onlineMode }: { bill: BillView; onNew: () => v
   const [open, setOpen] = useState(false);
   return (
     <>
-      <ScreenHead title="Counter" subtitle={settled ? "Bill poora hua" : "Payment lijiye"} />
+      <ScreenHead title="Counter" />
       <section className="hero p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
